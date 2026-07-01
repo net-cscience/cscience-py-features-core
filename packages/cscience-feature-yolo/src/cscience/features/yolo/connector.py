@@ -1,0 +1,2 @@
+class YoloConnector:
+    pass

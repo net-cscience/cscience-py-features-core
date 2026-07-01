@@ -1,0 +1,33 @@
+[project]
+name = "cscience-feature-clip"
+version = "0.1.0"
+description = "CLIP feature implementation for the CScience feature API."
+requires-python = ">=3.13"
+dependencies = [
+    "cscience-feature-api",
+    "numpy>=2.0",
+    "pillow>=11.0",
+    "torch>=2.0",
+    "open-clip-torch>=2.0",
+]
+
+[tool.uv.sources]
+cscience-feature-api = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/cscience"]
+sources = ["src"]
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "src",
+    "pyproject.toml",
+    "README.md",
+]
+
+[project.entry-points."cscience.features"]
+clip = "cscience.features.clip:register"

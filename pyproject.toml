@@ -1,0 +1,33 @@
+[project]
+name = "cscience-py-features-core"
+version = "0.1.0"
+description = "Workspace for CScience Python feature API and feature implementations."
+requires-python = ">=3.13"
+dependencies = [
+    "cscience-feature-api",
+    "cscience-feature-clip",
+    "cscience-feature-yolo",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+cscience-feature-api = { workspace = true }
+cscience-feature-clip = { workspace = true }
+cscience-feature-yolo = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+    "packages/cscience-feature-api",
+    "packages/cscience-feature-clip",
+    "packages/cscience-feature-yolo",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
