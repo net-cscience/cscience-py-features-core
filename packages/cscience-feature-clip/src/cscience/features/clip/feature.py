@@ -3,17 +3,18 @@ from __future__ import annotations
 
 from typing import List
 
-import numpy as np
 import open_clip
 import torch
-from PIL import Image
+from torch import Tensor
+
 from PIL.ImageFile import ImageFile
 
-from api.feature import FeatureRegistry
+from feature.feature_base import FeatureBase
 
 
-class ClipFeature(FeatureRegistry):
-    def __init__(self):
+class ClipFeature(FeatureBase):
+
+    def _initialize(self) -> None:
         if getattr(self, "_initialized", False):
             return
         self._model_name = "xlm-roberta-base-ViT-B-32"
@@ -30,8 +31,8 @@ class ClipFeature(FeatureRegistry):
 
 
     @classmethod
-    def _clip_text(cls, text: List[str]) -> torch.tensor:
-        service = cls._get_instance()
+    def clip_text(cls, text: List[str]) -> Tensor:
+        service = cls.get_instance()
 
         tokens = service._tokenizer(text).to(service._device)
 
@@ -43,8 +44,8 @@ class ClipFeature(FeatureRegistry):
         return vec
 
     @classmethod
-    def _clip_image(cls, img: ImageFile) -> torch.tensor:
-        service = cls._get_instance()
+    def clip_image(cls, img: ImageFile) -> Tensor:
+        service = cls.get_instance()
         image_tensor = service.preprocess(img).unsqueeze(0).to(service._device)
 
         with torch.no_grad():

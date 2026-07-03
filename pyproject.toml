@@ -6,7 +6,6 @@ requires-python = ">=3.13"
 dependencies = [
     "cscience-feature-api",
     "cscience-feature-clip",
-    "cscience-feature-yolo",
 ]
 
 [tool.uv]
@@ -21,7 +20,6 @@ cscience-feature-yolo = { workspace = true }
 members = [
     "packages/cscience-feature-api",
     "packages/cscience-feature-clip",
-    "packages/cscience-feature-yolo",
 ]
 
 [dependency-groups]

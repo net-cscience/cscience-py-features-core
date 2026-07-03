@@ -1,13 +1,17 @@
+from registry.registry_base import RegistryBase
+
+# Internal
 from .connector import ClipConnector
+from .convertion_provider import ClipConvertionProvider
 from .feature import ClipFeature
+
 
 __all__ = [
     "ClipConnector",
+    "ClipConvertionProvider",
     "ClipFeature",
-    "register",
 ]
 
 
-def register(registry):
-    registry.register_feature("clip", ClipFeature)
-    registry.register_connector("clip", ClipConnector)
+def register(registry: RegistryBase) -> None:
+        registry.register("clip", ClipConvertionProvider)
