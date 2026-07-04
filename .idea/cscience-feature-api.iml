@@ -2,9 +2,9 @@
 <module external.system.id="pyproject.toml" type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$/packages/cscience-feature-api">
-      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api/src" />
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api/tests" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api/tests" isTestSource="true" />
     </content>
     <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
