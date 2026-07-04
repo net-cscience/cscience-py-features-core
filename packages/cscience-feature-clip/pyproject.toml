@@ -26,6 +26,7 @@ sources = ["src"]
 [tool.hatch.build.targets.sdist]
 only-include = [
     "src",
+    "resources",
     "pyproject.toml",
     "README.md",
 ]

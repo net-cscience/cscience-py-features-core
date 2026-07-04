@@ -1,20 +1,16 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
-from mypy.checker_shared import abstractmethod
-
-from feature.feature_info import FeatureInfo
-from feature.service_info import ServiceInfo
+from ..feature.feature_info import FeatureInfo
+from ..feature.service_info import ServiceInfo
 
 
 class ConnectorBase(ABC):
-
-
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def get_feature_info() -> FeatureInfo:
-        return FeatureInfo()
+    def get_feature_info(cls) -> FeatureInfo:
+        raise NotImplementedError
 
-    @staticmethod
+    @classmethod
     @abstractmethod
-    def get_service_info() -> ServiceInfo:
-        return ServiceInfo()
+    def get_service_info(cls) -> ServiceInfo:
+        raise NotImplementedError

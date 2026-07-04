@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from conversion.converter import Converter
-from feature.feature_base import FeatureBase
+from .converter import Converter
+from ..feature.feature_base import FeatureBase
 
 
 class ConversionProviderBase(ABC):

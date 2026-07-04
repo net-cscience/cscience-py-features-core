@@ -1,11 +1,9 @@
-from abc import ABC, abstractmethod
-from typing import List
+from ..conversion.conversion_provider_base import ConversionProviderBase
+from ..conversion.converter import Converter
+from ..conversion.search_strategy_base import SearchStrategyBase
+from ..feature.feature_base import FeatureBase
+from ..registry.registry_base import RegistryBase, Tin
 
-from conversion.converter import Converter
-from conversion.conversion_provider_base import ConversionProviderBase
-from conversion.search_strategy_base import SearchStrategyBase
-from feature.feature_base import FeatureBase
-from registry.registry_base import RegistryBase, Tin
 
 class ConversionRegistry(RegistryBase[ConversionProviderBase]):
 

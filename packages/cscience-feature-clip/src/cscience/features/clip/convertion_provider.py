@@ -1,11 +1,13 @@
-from typing import  List
+from typing import List
 
-from PIL.ImageFile import ImageFile
-from torch import Tensor
-
-from conversion.converter import Converter
-from conversion.conversion_provider_base import ConversionProviderBase
-from feature.feature_base import FeatureBase
+from cscience.features.api.conversion.conversion_provider_base import ConversionProviderBase
+from cscience.features.api.conversion.converter import Converter
+from cscience.features.api.datatypes.core_datatypes.float_vector import FloatVector
+from cscience.features.api.datatypes.core_datatypes.text import Text
+from cscience.features.api.datatypes.core_datatypes.text_batch import TextBatch
+from cscience.features.api.feature.feature_base import FeatureBase
+from cscience.features.clip.clip_datatypes.clip_image import ClipImage
+from cscience.features.clip.clip_datatypes.clip_tensor import ClipTensor
 
 
 class ClipConvertionProvider(ConversionProviderBase):
@@ -15,29 +17,29 @@ class ClipConvertionProvider(ConversionProviderBase):
 
     def register_converters(self) -> List[Converter]:
         converters = [
-            Converter
+            Converter[Text,TextBatch]
                 (
                 name="text_to_list_wrapper",
                 source=self._feature,
-                fnc=lambda x: [x],
-                input_type= str,
-                output_type= List[str]
+                fnc =lambda x: TextBatch([x.data()]),
+                input_type= Text,
+                output_type= TextBatch
             ),
-            Converter
+            Converter[ClipImage,ClipImage]
                 (
                 name="image_passtrough_wrapper",
                 source=self._feature,
                 fnc=lambda x: x,
-                input_type=ImageFile,
-                output_type=ImageFile
+                input_type=ClipImage,
+                output_type=ClipImage
             ),
-            Converter
+            Converter[ClipTensor,FloatVector]
                 (
                 name="tensor_to_floatlist_wrapper",
                 source=self._feature,
-                fnc=lambda x: x.tolist(),
-                input_type=Tensor,
-                output_type=List[float]
+                fnc=lambda x: FloatVector(x.data().tolist()),
+                input_type=ClipTensor,
+                output_type=FloatVector
             ),
         ]
         return converters

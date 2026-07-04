@@ -1,9 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import TypeVar, Union, Generic, ClassVar, Any
 
-from conversion.conversion_provider_base import ConversionProviderBase
-from feature.feature_base import FeatureBase
-
 Tin = TypeVar("Tin", contravariant=True)
 
 

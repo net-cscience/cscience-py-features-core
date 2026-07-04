@@ -205,6 +205,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "cscience-feature-api" },
     { name = "cscience-feature-clip" },
+    { name = "pillow" },
 ]
 
 [package.dev-dependencies]
@@ -219,6 +220,7 @@ dev = [
 requires-dist = [
     { name = "cscience-feature-api", editable = "packages/cscience-feature-api" },
     { name = "cscience-feature-clip", editable = "packages/cscience-feature-clip" },
+    { name = "pillow", specifier = ">=12.2.0" },
 ]
 
 [package.metadata.requires-dev]

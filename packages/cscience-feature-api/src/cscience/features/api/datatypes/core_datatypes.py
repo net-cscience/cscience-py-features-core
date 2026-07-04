@@ -1,5 +1,0 @@
-
-
-
-class CoreDatatypes():
-    pass

@@ -3,9 +3,17 @@
   <component name="PySourceRootDetectionService">
     <option name="sourcePathsSet">
       <set>
+        <option value="$PROJECT_DIR$/packages/cscience-feature-yolo/src/cscience/feature" />
         <option value="$PROJECT_DIR$/packages/cscience-feature-api/src/cscience/feature" />
         <option value="$PROJECT_DIR$/packages/cscience-feature-clip/src/cscience/feature" />
-        <option value="$PROJECT_DIR$/packages/cscience-feature-yolo/src/cscience/feature" />
+        <option value="$PROJECT_DIR$/packages/cscience-feature-api/src/cscience/features" />
+        <option value="$PROJECT_DIR$/packages/cscience-feature-api/src/cscience/features/api" />
+        <option value="$PROJECT_DIR$/packages/cscience-feature-api/src" />
+        <option value="$PROJECT_DIR$/packages/cscience-feature-api" />
+        <option value="$PROJECT_DIR$/packages/cscience-feature-clip/src/cscience" />
+        <option value="$PROJECT_DIR$/packages/cscience-feature-clip/src/cscience/features" />
+        <option value="$PROJECT_DIR$/packages/cscience-feature-clip" />
+        <option value="$PROJECT_DIR$/packages/cscience-feature-api/src/cscience" />
       </set>
     </option>
   </component>

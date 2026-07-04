@@ -9,7 +9,10 @@ from torch import Tensor
 
 from PIL.ImageFile import ImageFile
 
-from feature.feature_base import FeatureBase
+from cscience.features.api.datatypes.core_datatypes.text_batch import TextBatch
+from cscience.features.api.feature.feature_base import FeatureBase
+from cscience.features.clip.clip_datatypes.clip_image import ClipImage
+from cscience.features.clip.clip_datatypes.clip_tensor import ClipTensor
 
 
 class ClipFeature(FeatureBase):
@@ -31,26 +34,26 @@ class ClipFeature(FeatureBase):
 
 
     @classmethod
-    def clip_text(cls, text: List[str]) -> Tensor:
+    def clip_text(cls, text: TextBatch) -> ClipTensor:
         service = cls.get_instance()
 
-        tokens = service._tokenizer(text).to(service._device)
+        tokens = service._tokenizer(text.data()).to(service._device)
 
         with torch.no_grad():
             feats = service._model.encode_text(tokens)
             feats = feats / feats.norm(dim=-1, keepdim=True)
 
         vec = feats[0].detach().float().cpu()
-        return vec
+        return ClipTensor(vec)
 
     @classmethod
-    def clip_image(cls, img: ImageFile) -> Tensor:
+    def clip_image(cls, img: ClipImage) -> ClipTensor:
         service = cls.get_instance()
-        image_tensor = service.preprocess(img).unsqueeze(0).to(service._device)
+        image_tensor = service.preprocess(img.data()).unsqueeze(0).to(service._device)
 
         with torch.no_grad():
             feats = service._model.encode_image(image_tensor)
             feats = feats / feats.norm(dim=-1, keepdim=True)
 
         vec = feats[0].detach().float().cpu()
-        return vec
+        return ClipTensor(vec)

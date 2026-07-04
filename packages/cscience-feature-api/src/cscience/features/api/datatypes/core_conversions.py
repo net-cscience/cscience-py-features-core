@@ -1,8 +1,8 @@
 from typing import List
 
-from conversion.converter import Converter
-from registry.conversion_registry import ConversionRegistry
-from feature.feature_base import FeatureBase
+from ..conversion.converter import Converter
+from ..feature.feature_base import FeatureBase
+from ..registry.conversion_registry import ConversionRegistry
 
 
 class CoreConversions(ConversionRegistry):
