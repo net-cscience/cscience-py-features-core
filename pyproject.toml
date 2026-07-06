@@ -6,7 +6,9 @@ requires-python = ">=3.13"
 dependencies = [
     "cscience-feature-api",
     "cscience-feature-clip",
-    "pillow>=12.2.0",
+    "pillow>=12.3.0",
+    "pydantic>=2.13.4",
+    "torch>=2.11.0",
 ]
 
 [tool.uv]

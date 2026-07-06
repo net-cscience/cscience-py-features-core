@@ -18,7 +18,7 @@ from cscience.features.clip.clip_datatypes.clip_tensor import ClipTensor
 class ClipFeature(FeatureBase):
 
     def _initialize(self) -> None:
-        if getattr(self, "_initialized", False):
+        if self._initialized:
             return
         self._model_name = "xlm-roberta-base-ViT-B-32"
         self._pretrained = "laion5b_s13b_b90k"
@@ -34,7 +34,7 @@ class ClipFeature(FeatureBase):
 
 
     @classmethod
-    def clip_text(cls, text: TextBatch) -> ClipTensor:
+    def text(cls, text: TextBatch) -> ClipTensor:
         service = cls.get_instance()
 
         tokens = service._tokenizer(text.data()).to(service._device)
@@ -43,11 +43,11 @@ class ClipFeature(FeatureBase):
             feats = service._model.encode_text(tokens)
             feats = feats / feats.norm(dim=-1, keepdim=True)
 
-        vec = feats[0].detach().float().cpu()
+        vec = feats.detach().float().cpu()
         return ClipTensor(vec)
 
     @classmethod
-    def clip_image(cls, img: ClipImage) -> ClipTensor:
+    def image(cls, img: ClipImage) -> ClipTensor:
         service = cls.get_instance()
         image_tensor = service.preprocess(img.data()).unsqueeze(0).to(service._device)
 
