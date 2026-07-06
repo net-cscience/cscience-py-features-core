@@ -4,10 +4,7 @@ from ..clip_datatype import ClipDatatype
 
 
 class ClipTensor(ClipDatatype):
+    """Single CLIP embedding tensor with shape [d]."""
 
     def __init__(self, data:Tensor) -> None:
-        self._data: Tensor = data
-
-    def data(self) -> Tensor:
-        return self._data
-
+        super().__init__(data)

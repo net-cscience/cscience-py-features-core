@@ -1,17 +1,15 @@
 from abc import ABC, abstractmethod, abstractproperty
-from typing import Any
+from typing import Any, TypeVar, Generic
 
+T = TypeVar('T')
 
-class DatatypeBase(ABC):
+class DatatypeBase(ABC, Generic[T]):
 
+    def __init__(self, data: T) -> None:
+        self._data = data
 
-    @abstractmethod
-    def __init__(self, data: Any) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def data(self) -> Any:
-        raise NotImplementedError
+    def data(self) -> T:
+        return self._data
 
     @staticmethod
     def fullname(o: object) -> str:

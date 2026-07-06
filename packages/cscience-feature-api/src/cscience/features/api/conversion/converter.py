@@ -1,8 +1,6 @@
-from typing import Callable, Generic, TypeVar, get_type_hints
+from typing import Callable, Generic, TypeVar
 
-from cscience.features.api.datatypes.datatype_base import DatatypeBase
-from cscience.features.api.feature.feature_base import FeatureBase
-
+from .conversion_key import ConversionKey
 from ..datatypes.datatype_base import DatatypeBase
 from ..feature.feature_base import FeatureBase
 
@@ -12,17 +10,17 @@ Tout = TypeVar('Tout', bound=DatatypeBase, covariant=True)
 
 class Converter(Generic[Tin, Tout]):
     def __init__(self, name: str, source: FeatureBase,
-                 fnc: Callable[[Tin], Tout],
+                 function: Callable[[Tin], Tout],
                  input_type: type[DatatypeBase],
                  output_type: type[DatatypeBase]) -> None:
         self._name: str = name
         self._source: FeatureBase = source
-        self._fnc: Callable[[Tin], Tout] = fnc
+        self._function: Callable[[Tin], Tout] = function
         self._input_type: type[DatatypeBase] = input_type
         self._output_type: type[DatatypeBase] = output_type
 
     def __call__(self, data: Tin) -> Tout:
-        return self._fnc(data)
+        return self._function(data)
 
-    def get_identifier(self) -> tuple[FeatureBase, type[DatatypeBase], type[DatatypeBase]]:
-        return self._source, self._input_type, self._output_type
+    def get_identifier(self) -> ConversionKey:
+        return ConversionKey(type(self._source), self._input_type, self._output_type)

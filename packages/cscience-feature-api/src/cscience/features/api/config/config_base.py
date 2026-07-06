@@ -1,31 +1,13 @@
 from abc import ABC, abstractmethod
-from pathlib import Path
+from pydantic import BaseModel
+from abc import ABC, abstractmethod
 
-class ConfigBase(ABC):
+from pydantic import BaseModel
 
-    def __init__(self):
-        self._config_path: Path
-        self._schema_path: Path
 
-    def load(self):
-        self._load_config()
-        self._load_schema()
-        self._validate()
-    
-    @abstractmethod
-    def _load_config(self):
-        pass
-    
-    @abstractmethod
-    def _load_schema(self):
-        pass
+class ConfigBase(ABC, BaseModel):
 
+    @classmethod
     @abstractmethod
-    def _validate(self):
-        pass
-    
-    @abstractmethod
-    def _save(self):
-        pass
-    
-    
+    def _namespace(cls): raise NotImplementedError
+

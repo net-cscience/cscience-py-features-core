@@ -1,10 +1,8 @@
+from .vector_base import VectorBase
 from ..core_datatype import CoreDatatype
 
 
-class FloatVector(CoreDatatype):
+class FloatVector(VectorBase[list[float]], CoreDatatype[list[float]]):
 
-    def __init__(self, data:list[float]) -> None:
-        self._data: list[float] = data
-
-    def data(self) -> list[float]:
-        return self._data
+    def __init__(self, data:list[float], assert_length: int|None=None) -> None:
+        super().__init__(data, assert_length)

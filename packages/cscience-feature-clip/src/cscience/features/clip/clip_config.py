@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import Field
 
 from cscience.features.api.config.config_base import ConfigBase
@@ -7,6 +5,10 @@ from cscience.features.api.config.config_base import ConfigBase
 
 class ClipConfig(ConfigBase):
 
+
+    @classmethod
+    def _namespace(cls):
+        return "clip"
 
     model_name:str = Field(
         default="xlm-roberta-base-ViT-B-32",

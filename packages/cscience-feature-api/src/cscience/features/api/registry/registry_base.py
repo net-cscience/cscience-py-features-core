@@ -40,6 +40,6 @@ class RegistryBase(ABC, Generic[Tin]):
         pass
 
     @abstractmethod
-    def register(self, name: str, domain: Tin) -> None:
+    def register(self, name: str, provider: Tin) -> None:
         """Register a feature in the registry."""
         pass

@@ -1,7 +1,7 @@
+from ..conversion.conversion_key import ConversionKey
 from ..conversion.conversion_provider_base import ConversionProviderBase
 from ..conversion.converter import Converter
 from ..conversion.search_strategy_base import SearchStrategyBase
-from ..feature.feature_base import FeatureBase
 from ..registry.registry_base import RegistryBase, Tin
 
 
@@ -12,20 +12,28 @@ class ConversionRegistry(RegistryBase[ConversionProviderBase]):
         cls._converters  = {}
         pass
 
-    _converters: dict[tuple[FeatureBase, type, type], Converter] = None
-
+    _converters: dict[ConversionKey, Converter] = None
 
     @classmethod
-    def register(cls, name: str, domain: Tin) -> None:
-        for converter in domain.register_converters():
-            cls.get_instance()._converters[converter.get_identifier()] = converter
+    def get_converters(cls) -> dict[ConversionKey, Converter]:
+        return cls._converters
+
+    @classmethod
+    def register(cls, name: str, provider: Tin) -> None:
+        for converter in provider.register_converters():
+            cls.get_instance().get_converters()[converter.get_identifier()] = converter
 
     @classmethod
     def has_best_effort_converter(cls, strategy: SearchStrategyBase) -> bool:
-        return strategy.search(cls.get_instance()._converters) is not None
+        try:
+            strategy.search(cls.get_instance().get_converters())
+            return True
+        except LookupError:
+            return False
 
     @classmethod
     def get_best_effort_converter(cls, strategy: SearchStrategyBase) -> Converter:
-        if cls.has_best_effort_converter(strategy):
-            return strategy.search(cls.get_instance()._converters)
-        raise Exception("No best effort converter found")
+        try:
+            return strategy.search(cls.get_instance().get_converters())
+        except LookupError as ex:
+            raise LookupError(f"No best effort converter found for strategy: {strategy}") from ex

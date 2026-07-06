@@ -13,7 +13,7 @@ from .datatypes.core_datatypes.float_vector import FloatVector
 from .datatypes.core_datatypes.float_vector_batch import FloatVectorBatch
 from .datatypes.core_datatypes.text import Text
 from .datatypes.core_datatypes.text_batch import TextBatch
-from .datatypes.core_conversions import CoreConversions
+from .datatypes.core_convertion_provider import CoreConvertionProvider
 from .datatypes.core_datatype import CoreDatatype
 from .datatypes.datatype_base import DatatypeBase
 # Features
@@ -23,7 +23,8 @@ from .feature.service_info import ServiceInfo
 # Registry
 from .registry.conversion_registry import ConversionRegistry
 from .registry.registry_base import RegistryBase
-
+# Utils
+from .utils.measure_time import measure_time
 __all__ = [
     # Config
     "ConfigBase",
@@ -38,9 +39,9 @@ __all__ = [
     # Datatypes
     "FloatVector",
     "FloatVectorBatch",
-    "TextBatch",
     "Text",
-    "CoreConversions",
+    "TextBatch",
+    "CoreConvertionProvider",
     "CoreDatatype",
     "DatatypeBase",
     # Features
@@ -50,4 +51,7 @@ __all__ = [
     # Registry
     "ConversionRegistry",
     "RegistryBase",
+    # Utils
+    "measure_time"
 ]
+

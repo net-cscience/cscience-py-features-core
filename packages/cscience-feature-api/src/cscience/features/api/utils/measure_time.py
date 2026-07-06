@@ -17,7 +17,12 @@ def measure_time(times: int=1, ignore_first: bool=False):
                 end = timeit.default_timer()
                 t_total += end - start
 
-            print(f"\t{func.__name__} \t\t [mean] ⌛ {t_total/n:.5f} s for 🧮 {n} iterations")
+            max_width = 39
+
+            print(
+                f"\t{func.__name__:<{max_width}} "
+                f"[mean] ⌛ {t_total / n:.5f} s for 🧮 {n} iterations"
+            )
             return result
         return wrapper
     return inner
