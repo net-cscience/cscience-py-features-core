@@ -11,15 +11,16 @@ from cscience.features.clip.clip_datatypes.clip_tensor_batch import ClipTensorBa
 
 
 class ClipConversionProvider(ConversionProviderBase):
-
+    """Registers datatype conversions required by the CLIP connector."""
     def __init__(self, feature: FeatureBase) -> None:
         super().__init__(feature)
- 
+
     def register_converters(self) -> List[Converter]:
+        """Return CLIP-specific input and output converters."""
         converters = [
             Converter[ClipImage, ClipImageBatch]
                 (
-                name="image_batch_passtrough_wrapper",
+                name="image_to_image_batch",
                 source=self._feature,
                 function=lambda x: ClipImageBatch([x.data()]),
                 input_type=ClipImage,
@@ -35,7 +36,7 @@ class ClipConversionProvider(ConversionProviderBase):
             ),
             Converter[ClipTensorBatch, FloatVector]
                 (
-                name="tenor_batch_to_float_vector",
+                name="tensor_batch_to_float_vector",
                 source=self._feature,
                 function=lambda x: FloatVector(x.data()[0].tolist()),
                 input_type=ClipTensorBatch,
@@ -43,7 +44,7 @@ class ClipConversionProvider(ConversionProviderBase):
             ),
             Converter[ClipTensorBatch, FloatVectorBatch]
                 (
-                name="tensor_to_float_vector_batch",
+                name="tensor_batch_to_float_vector_batch",
                 source=self._feature,
                 function=lambda x: FloatVectorBatch(
                     {

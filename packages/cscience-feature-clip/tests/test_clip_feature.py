@@ -5,7 +5,9 @@ from PIL.ImageFile import ImageFile
 
 from cscience.features.api.registry.conversion_registry import ConversionRegistry
 from cscience.features.api.utils.measure_time import measure_time
-from cscience.features.clip import ClipConnector, ClipConversionProvider, ClipFeature
+from cscience.features.clip.clip_connector import ClipConnector
+from cscience.features.clip.clip_conversion_provider import ClipConversionProvider
+from cscience.features.clip.clip_feature import ClipFeature
 
 
 class FeatureTest(unittest.TestCase):

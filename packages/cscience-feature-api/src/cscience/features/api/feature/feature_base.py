@@ -6,6 +6,12 @@ from typing import Any, ClassVar
 
 
 class FeatureBase(ABC):
+    """Base class for model-backed feature services.
+
+    Each concrete feature class is instantiated as a singleton. Expensive
+    resources such as neural network weights should be loaded in `_initialize`.
+    """
+
     _instances: ClassVar[dict[type["FeatureBase"], "FeatureBase"]] = {}
     _initialized: bool = False
 
@@ -27,12 +33,10 @@ class FeatureBase(ABC):
 
     @classmethod
     def get_instance(cls):
+        """Return the singleton instance of the concrete feature class."""
         return cls()
 
     @abstractmethod
     def _initialize(self) -> None:
-        """
-        Load expensive resources here, e.g. model weights.
-        Called exactly once per concrete feature class.
-        """
+        """Initialize expensive feature resources exactly once."""
         pass

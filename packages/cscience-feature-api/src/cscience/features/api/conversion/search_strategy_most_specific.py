@@ -7,12 +7,13 @@ from ..feature.feature_base import FeatureBase
 
 
 class SearchStrategyMostSpecific(SearchStrategyBase):
-
+    """Resolve a converter by exact feature key, then by core fallback key."""
     def __init__(self, conversion_key: ConversionKey):
         super().__init__(conversion_key)
 
     def search(self,
                recordset: dict[ConversionKey, Converter]) -> Converter:
+        """Return the best matching converter or raise `LookupError`."""
 
         key: ConversionKey = self._conversion_key
         key_core: ConversionKey = ConversionKey(CoreFeature, key.input_type, key.output_type)

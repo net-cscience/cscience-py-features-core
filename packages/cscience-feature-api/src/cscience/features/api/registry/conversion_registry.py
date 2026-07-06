@@ -6,7 +6,7 @@ from ..registry.registry_base import RegistryBase, Tin
 
 
 class ConversionRegistry(RegistryBase[ConversionProviderBase]):
-
+    """Singleton registry for datatype converters."""
     @classmethod
     def _initialize(cls) -> None:
         cls._converters  = {}
@@ -16,15 +16,18 @@ class ConversionRegistry(RegistryBase[ConversionProviderBase]):
 
     @classmethod
     def get_converters(cls) -> dict[ConversionKey, Converter]:
+        """Return the dictionary of all registered converters."""
         return cls._converters
 
     @classmethod
     def register(cls, name: str, provider: Tin) -> None:
+        """Register all converters exposed by a conversion provider."""
         for converter in provider.register_converters():
             cls.get_instance().get_converters()[converter.get_identifier()] = converter
 
     @classmethod
     def has_best_effort_converter(cls, strategy: SearchStrategyBase) -> bool:
+        """Check if the given strategy has a best effort converter."""
         try:
             strategy.search(cls.get_instance().get_converters())
             return True
@@ -33,6 +36,7 @@ class ConversionRegistry(RegistryBase[ConversionProviderBase]):
 
     @classmethod
     def get_best_effort_converter(cls, strategy: SearchStrategyBase) -> Converter:
+        """Resolve a converter with the given search strategy."""
         try:
             return strategy.search(cls.get_instance().get_converters())
         except LookupError as ex:

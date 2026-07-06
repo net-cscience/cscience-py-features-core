@@ -17,7 +17,7 @@ from cscience.features.api.feature.feature_base import FeatureBase
 
 
 
-class CoreConvertionProvider(ConversionProviderBase):
+class CoreConversionProvider(ConversionProviderBase):
 
     def __init__(self, feature: FeatureBase) -> None:
         super().__init__(feature)

@@ -11,13 +11,16 @@ from PIL.ImageFile import ImageFile
 
 from cscience.features.api.datatypes.core_datatypes.text_batch import TextBatch
 from cscience.features.api.feature.feature_base import FeatureBase
-from cscience.features.clip.clip_datatypes.clip_image import ClipImage
-from cscience.features.clip.clip_datatypes.clip_image_batch import ClipImageBatch
-from cscience.features.clip.clip_datatypes.clip_tensor import ClipTensor
-from cscience.features.clip.clip_datatypes.clip_tensor_batch import ClipTensorBatch
+from .clip_datatypes.clip_image_batch import ClipImageBatch
+from .clip_datatypes.clip_tensor_batch import ClipTensorBatch
 
 
 class ClipFeature(FeatureBase):
+    """CLIP feature service backed by OpenCLIP.
+
+    Loads the model, tokenizer, preprocessing pipeline, and target device once.
+    Public methods operate on CLIP-specific datatype wrappers.
+    """
 
     def _initialize(self) -> None:
         if self._initialized:
@@ -37,6 +40,7 @@ class ClipFeature(FeatureBase):
 
     @classmethod
     def text_batch(cls, texts: TextBatch) -> ClipTensorBatch:
+        """Embed a batch of text strings into normalized CLIP vectors."""
         service = cls.get_instance()
 
         tokens = service._tokenizer(texts.data()).to(service._device)
@@ -50,6 +54,7 @@ class ClipFeature(FeatureBase):
 
     @classmethod
     def image_batch(cls, images: ClipImageBatch) -> ClipTensorBatch:
+        """Embed a batch of PIL images into normalized CLIP vectors."""
         service = cls.get_instance()
 
         image_tensors = torch.stack([

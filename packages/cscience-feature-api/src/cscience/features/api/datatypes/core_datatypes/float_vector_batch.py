@@ -1,5 +1,5 @@
-from .vector_base import VectorBase
-from ..core_datatype import CoreDatatype
+from cscience.features.api.datatypes.vector_base import VectorBase
+
 
 class FloatVectorBatch(VectorBase[dict[int,list[float]]]):
 

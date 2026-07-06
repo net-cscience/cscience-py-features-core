@@ -13,7 +13,7 @@ from .datatypes.core_datatypes.float_vector import FloatVector
 from .datatypes.core_datatypes.float_vector_batch import FloatVectorBatch
 from .datatypes.core_datatypes.text import Text
 from .datatypes.core_datatypes.text_batch import TextBatch
-from .datatypes.core_convertion_provider import CoreConvertionProvider
+from .datatypes.core_conversion_provider import CoreConversionProvider
 from .datatypes.core_datatype import CoreDatatype
 from .datatypes.datatype_base import DatatypeBase
 # Features
@@ -41,7 +41,7 @@ __all__ = [
     "FloatVectorBatch",
     "Text",
     "TextBatch",
-    "CoreConvertionProvider",
+    "CoreConversionProvider",
     "CoreDatatype",
     "DatatypeBase",
     # Features

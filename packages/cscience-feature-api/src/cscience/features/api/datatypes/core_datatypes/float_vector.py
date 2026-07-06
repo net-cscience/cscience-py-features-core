@@ -1,4 +1,4 @@
-from .vector_base import VectorBase
+from cscience.features.api.datatypes.vector_base import VectorBase
 from ..core_datatype import CoreDatatype
 
 

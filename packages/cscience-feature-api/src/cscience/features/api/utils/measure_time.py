@@ -2,6 +2,11 @@ import timeit
 
 
 def measure_time(times: int=1, ignore_first: bool=False):
+    """Measure the mean runtime of a function over repeated executions.
+
+    Intended for lightweight development benchmarks, not for production
+    profiling.
+    """
     def inner(func):
         def wrapper(*args, **kwargs):
 

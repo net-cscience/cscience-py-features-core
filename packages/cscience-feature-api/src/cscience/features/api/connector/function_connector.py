@@ -16,7 +16,11 @@ Tout = TypeVar('Tout', bound=DatatypeBase)
 
 
 class FunctionConnector(Generic[Tin, Tfi, Tfo, Tout]):
+    """Wrap a feature function with input and output conversions.
 
+    The connector resolves one converter from public input type to feature input
+    type and one converter from feature output type to public output type.
+    """
     def __init__(self, feature: FeatureBase, function: Callable[[Tfi], Tfo],
                  input_type: type[DatatypeBase],
                  input_feature_type: type[DatatypeBase],
@@ -31,4 +35,5 @@ class FunctionConnector(Generic[Tin, Tfi, Tfo, Tout]):
         self.wrapped = lambda x: self.outer(function(self.inner(x)))
 
     def __call__(self, x: Tin) -> Tout:
+        """Run input conversion, feature function, and output conversion."""
         return self.wrapped(x)

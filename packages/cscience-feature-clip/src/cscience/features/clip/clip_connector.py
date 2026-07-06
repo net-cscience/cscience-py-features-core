@@ -19,12 +19,13 @@ from cscience.features.clip.clip_feature import ClipFeature
 
 
 class ClipConnector(ConnectorBase):
-
+    """Public connector for CLIP text and image embeddings."""
     def __init__(self,) -> None:
         self.feature = ClipFeature().get_instance()
         super().__init__("clip", ClipConversionProvider(self.feature))
 
     def text(self, data: str) -> list[float]:
+        """Embed a single text string and return one float vector."""
         function = FunctionConnector(
             feature=self.feature,
             function=self.feature.text_batch,
@@ -35,6 +36,7 @@ class ClipConnector(ConnectorBase):
         return function(Text(data)).data()
 
     def text_batch(self, data: list[str]) -> dict[int,list[float]]:
+        """Embed text strings and return vectors indexed by input position."""
         function = FunctionConnector(
             feature=self.feature,
             function=self.feature.text_batch,
@@ -45,6 +47,7 @@ class ClipConnector(ConnectorBase):
         return function(TextBatch(data)).data()
 
     def image(self, data: ImageFile) -> list[float]:
+        """Embed a single image and return one float vector."""
         function = FunctionConnector(
             feature=self.feature,
             function=self.feature.image_batch,
@@ -55,6 +58,7 @@ class ClipConnector(ConnectorBase):
         return function(ClipImage(data)).data()
 
     def image_batch(self, data: list[ImageFile]) -> dict[int, list[float]]:
+        """Embed images and return vectors indexed by input position."""
         function = FunctionConnector(
             feature=self.feature,
             function=self.feature.image_batch,
