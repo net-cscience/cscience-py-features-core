@@ -22,6 +22,7 @@ cscience-feature-clip-spatial = { workspace = true }
 [tool.uv.workspace]
 members = [
     "packages/cscience-feature-api",
+    "packages/cscience-feature-asr-whisper",
     "packages/cscience-feature-clip",
     "packages/cscience-feature-nsfw-image",
     "packages/cscience-feature-ocr-tesseract"

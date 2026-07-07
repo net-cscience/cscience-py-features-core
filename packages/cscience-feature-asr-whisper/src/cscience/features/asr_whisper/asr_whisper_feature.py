@@ -5,7 +5,7 @@ import threading
 import torch
 import whisper
 
-from cscience.features.api.feature.feature_base import FeatureBase
+from cscience.features.api import FeatureBase
 
 from .asr_whisper_datatypes.audio_signal import AudioSignal
 from .asr_whisper_datatypes.whisper_transcription import (
@@ -20,24 +20,30 @@ class AsrWhisperFeature(FeatureBase):
     Loads the Whisper model once and transcribes decoded mono audio signals.
     """
 
+    MODEL_NAME = "small"
+
     def _initialize(self) -> None:
         if self._initialized:
             return
 
-        self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._model = whisper.load_model("small", device=self._device)
-        self._lock = threading.Lock()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = whisper.load_model(self.MODEL_NAME, device=self.device)
+        self.lock = threading.Lock()
+
         self._initialized = True
 
     @classmethod
     @torch.inference_mode()
     def transcribe(cls, audio: AudioSignal) -> WhisperTranscription:
-        """Transcribe a mono 16 kHz audio signal with Whisper."""
+        """Transcribe a Whisper-ready audio signal."""
         service = cls.get_instance()
-        fp16 = service._device.type == "cuda"
+        fp16 = service.device.type == "cuda"
 
-        with service._lock:
-            result = service._model.transcribe(audio.data().waveform, fp16=fp16)
+        with service.lock:
+            result = service.model.transcribe(
+                audio.data().waveform,
+                fp16=fp16,
+            )
 
         return WhisperTranscription(
             WhisperTranscriptionData(

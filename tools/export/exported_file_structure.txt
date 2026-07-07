@@ -1,0 +1,11 @@
+# Exported file structure on 2026-07-07 18:09:11.890364 with root dir packages\cscience-feature-asr-whisper
+packages\cscience-feature-asr-whisper\tests\test_asr_whisper_feature.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\asr_whisper_connector.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\asr_whisper_conversion_provider.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\asr_whisper_feature.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\__init__.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\asr_whisper_datatypes\asr_whisper_datatype.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\asr_whisper_datatypes\audio_bytes.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\asr_whisper_datatypes\audio_data_url.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\asr_whisper_datatypes\audio_signal.py
+packages\cscience-feature-asr-whisper\src\cscience\features\asr_whisper\asr_whisper_datatypes\whisper_transcription.py

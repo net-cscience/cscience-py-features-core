@@ -1,15 +1,16 @@
 import base64
 import io
-from urllib.parse import unquote
 
 import librosa
 import numpy as np
 import soundfile as sf
 
-from cscience.features.api.conversion.conversion_provider_base import ConversionProviderBase
-from cscience.features.api.conversion.converter import Converter
-from cscience.features.api.datatypes.core_datatypes.text import Text
-from cscience.features.api.feature.feature_base import FeatureBase
+from cscience.features.api import (
+    ConversionProviderBase,
+    Converter,
+    FeatureBase,
+    Text,
+)
 
 from .asr_whisper_datatypes.audio_bytes import AudioBytes
 from .asr_whisper_datatypes.audio_data_url import AudioDataUrl
@@ -17,19 +18,32 @@ from .asr_whisper_datatypes.audio_signal import AudioSignal, AudioSignalData
 from .asr_whisper_datatypes.whisper_transcription import WhisperTranscription
 
 
-def audio_data_url_to_bytes(data_url: AudioDataUrl) -> AudioBytes:
-    """Decode a base64 audio data URL into raw bytes."""
-    data = unquote(data_url.data())
-
-    if not data or "base64," not in data:
-        raise ValueError("Missing or invalid base64 audio data.")
-
-    _, encoded = data.split("base64,", 1)
-    return AudioBytes(base64.b64decode(encoded))
+def audio_data_url_passthrough(data_url: AudioDataUrl) -> AudioDataUrl:
+    return data_url
 
 
-def audio_bytes_to_signal(audio: AudioBytes) -> AudioSignal:
-    """Decode audio bytes, convert to mono float32, and resample to 16 kHz."""
+def audio_bytes_passthrough(audio: AudioBytes) -> AudioBytes:
+    return audio
+
+
+def audio_signal_passthrough(signal: AudioSignal) -> AudioSignal:
+    return signal
+
+
+def whisper_transcription_passthrough(
+    transcription: WhisperTranscription,
+) -> WhisperTranscription:
+    return transcription
+
+
+def audio_data_url_to_audio_bytes(data_url: AudioDataUrl) -> AudioBytes:
+    """Decode a base64 audio data URL into raw encoded audio bytes."""
+    encoded = data_url.payload()
+    return AudioBytes(base64.b64decode(encoded, validate=True))
+
+
+def audio_bytes_to_audio_signal(audio: AudioBytes) -> AudioSignal:
+    """Decode audio bytes into Whisper-ready mono float32 16 kHz audio."""
     waveform, sample_rate = sf.read(io.BytesIO(audio.data()))
     waveform = np.asarray(waveform)
 
@@ -38,8 +52,7 @@ def audio_bytes_to_signal(audio: AudioBytes) -> AudioSignal:
     elif waveform.ndim != 1:
         raise ValueError(f"Unexpected audio shape: {waveform.shape}")
 
-    if waveform.dtype != np.float32:
-        waveform = waveform.astype(np.float32)
+    waveform = waveform.astype(np.float32, copy=False)
 
     if sample_rate != 16_000:
         waveform = librosa.resample(
@@ -49,12 +62,26 @@ def audio_bytes_to_signal(audio: AudioBytes) -> AudioSignal:
         )
         sample_rate = 16_000
 
-    return AudioSignal(AudioSignalData(waveform=waveform, sample_rate=sample_rate))
+    waveform = np.ascontiguousarray(waveform, dtype=np.float32)
+
+    return AudioSignal(
+        AudioSignalData(
+            waveform=waveform,
+            sample_rate=sample_rate,
+        )
+    )
 
 
-def transcription_to_text(result: WhisperTranscription) -> Text:
-    """Extract plain text from a Whisper transcription result."""
-    return Text(result.data().text)
+def audio_data_url_to_audio_signal(data_url: AudioDataUrl) -> AudioSignal:
+    """Decode a base64 audio data URL directly into a Whisper-ready signal."""
+    return audio_bytes_to_audio_signal(
+        audio_data_url_to_audio_bytes(data_url)
+    )
+
+
+def whisper_transcription_to_text(transcription: WhisperTranscription) -> Text:
+    """Extract plain text from a Whisper transcription."""
+    return Text(transcription.data().text)
 
 
 class AsrWhisperConversionProvider(ConversionProviderBase):
@@ -65,24 +92,59 @@ class AsrWhisperConversionProvider(ConversionProviderBase):
 
     def register_converters(self) -> list[Converter]:
         return [
-            Converter(
-                name="audio_data_url_to_bytes",
+            Converter[AudioDataUrl, AudioDataUrl](
+                name="audio_data_url_passthrough",
                 source=self._feature,
-                function=audio_data_url_to_bytes,
+                function=audio_data_url_passthrough,
+                input_type=AudioDataUrl,
+                output_type=AudioDataUrl,
+            ),
+            Converter[AudioBytes, AudioBytes](
+                name="audio_bytes_passthrough",
+                source=self._feature,
+                function=audio_bytes_passthrough,
+                input_type=AudioBytes,
+                output_type=AudioBytes,
+            ),
+            Converter[AudioSignal, AudioSignal](
+                name="audio_signal_passthrough",
+                source=self._feature,
+                function=audio_signal_passthrough,
+                input_type=AudioSignal,
+                output_type=AudioSignal,
+            ),
+            Converter[WhisperTranscription, WhisperTranscription](
+                name="whisper_transcription_passthrough",
+                source=self._feature,
+                function=whisper_transcription_passthrough,
+                input_type=WhisperTranscription,
+                output_type=WhisperTranscription,
+            ),
+            Converter[AudioDataUrl, AudioBytes](
+                name="audio_data_url_to_audio_bytes",
+                source=self._feature,
+                function=audio_data_url_to_audio_bytes,
                 input_type=AudioDataUrl,
                 output_type=AudioBytes,
             ),
-            Converter(
-                name="audio_bytes_to_signal",
+            Converter[AudioBytes, AudioSignal](
+                name="audio_bytes_to_audio_signal",
                 source=self._feature,
-                function=audio_bytes_to_signal,
+                function=audio_bytes_to_audio_signal,
                 input_type=AudioBytes,
                 output_type=AudioSignal,
             ),
-            Converter(
+            Converter[AudioDataUrl, AudioSignal](
+                name="audio_data_url_to_audio_signal",
+                source=self._feature,
+                function=audio_data_url_to_audio_signal,
+                input_type=AudioDataUrl,
+                output_type=AudioSignal,
+            ),
+            Converter[WhisperTranscription, Text](
                 name="whisper_transcription_to_text",
                 source=self._feature,
-                function=transcription_to_text,
+                function=whisper_transcription_to_text,
                 input_type=WhisperTranscription,
                 output_type=Text,
             ),

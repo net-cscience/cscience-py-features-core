@@ -1,3 +1,5 @@
+# Exported TOML on 2026-07-07 18:09:11.895266 with root dir packages\cscience-feature-asr-whisper
+# From packages\cscience-feature-asr-whisper\pyproject.toml
 [project]
 name = "cscience-feature-asr-whisper"
 version = "0.1.0"
@@ -5,6 +7,7 @@ description = "Whisper ASR feature implementation for the CScience feature API."
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "cscience-feature-api",
+
     "numpy>=2.0,<3",
     "torch>=2.7,<3",
     "openai-whisper>=20250625",
@@ -34,3 +37,4 @@ sources = ["src"]
 
 [project.entry-points."cscience.features"]
 asr_whisper = "cscience.features.asr_whisper:register"
+
