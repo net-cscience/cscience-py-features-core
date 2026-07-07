@@ -1,8 +1,5 @@
-from cscience.features.api.datatypes.core_datatype import CoreDatatype
+from cscience.features.api.datatypes.base.image_bytes_base import ImageBytesBase
 
 
-class ImageBytes(CoreDatatype[bytes]):
+class ImageBytes(ImageBytesBase):
     """Encoded image bytes."""
-
-    def __init__(self, data: bytes) -> None:
-        super().__init__(data)

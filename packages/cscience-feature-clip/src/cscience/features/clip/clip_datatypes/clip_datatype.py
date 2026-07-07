@@ -1,7 +1,9 @@
 from abc import ABC
 
-from cscience.features.api.datatypes.datatype_base import DatatypeBase
+from cscience.features.api import DatatypeBase
 
 
 class ClipDatatype(DatatypeBase, ABC):
+    """Base class for CLIP-specific datatypes."""
+
     namespace = "clip"

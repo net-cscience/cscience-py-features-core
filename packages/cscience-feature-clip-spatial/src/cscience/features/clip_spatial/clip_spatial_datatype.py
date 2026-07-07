@@ -4,4 +4,4 @@ from cscience.features.api.datatypes.datatype_base import DatatypeBase
 
 
 class ClipDatatype(DatatypeBase, ABC):
-    namespace = "clip"
+    namespace = "clip_spatial"

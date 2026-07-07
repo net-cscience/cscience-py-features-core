@@ -1,7 +1,9 @@
-from cscience.features.api.datatypes.base.vector_base import VectorBase
+from cscience.features.api.datatypes.base.embedding_base import EmbeddingBase
+
+from .primitive_vector_batch_base import PrimitiveVectorBatchBase
 
 
-class FloatVectorBatch(VectorBase[dict[int,list[float]]]):
+class FloatVectorBatch(PrimitiveVectorBatchBase[float], EmbeddingBase):
+    """Batch of float vectors indexed by source position."""
 
-    def __init__(self, data: dict[int,list[float]],assert_length: int|None=None) -> None:
-        super().__init__(data, assert_length)
+    element_type = float

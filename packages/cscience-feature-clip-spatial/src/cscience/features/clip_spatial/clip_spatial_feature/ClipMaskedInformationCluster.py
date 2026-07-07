@@ -3,12 +3,12 @@ import torch
 from PIL import Image
 from fractions import Fraction
 
-from .MaskingGenerator import  MaskingGenerator
+from cscience.features.clip_spatial.clip_spatial_feature.Masking.MaskingGenerator import  MaskingGenerator
 from .OpenClipScoringService import OpenClipScoringService
-from .SquareProvider import SquareProvider
-from .ZeroProvider import ZeroProvider
-from .MaskingMode import  MaskingMode
-from .Util import taget_point_hard, taget_point_soft
+from cscience.features.clip_spatial.clip_spatial_feature.Geometry.SquareProvider import SquareProvider
+from cscience.features.clip_spatial.clip_spatial_feature.Filter.ZeroProvider import ZeroProvider
+from cscience.features.clip_spatial.clip_spatial_feature.Masking.MaskingMode import  MaskingMode
+from .visualization_util import taget_point_hard, taget_point_soft
 
 class ClipMaskedInformationCluster:
 

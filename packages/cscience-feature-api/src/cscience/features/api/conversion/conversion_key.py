@@ -1,6 +1,4 @@
-from dataclasses import dataclass
-
-from ..datatypes.datatype_base import DatatypeBase
+from ..datatypes.base.datatype_base import DatatypeBase
 from ..feature.feature_base import FeatureBase
 
 

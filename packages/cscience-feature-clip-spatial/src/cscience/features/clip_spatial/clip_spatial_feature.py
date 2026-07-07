@@ -1,21 +1,18 @@
 
 from __future__ import annotations
 
-from typing import List
 
 import open_clip
 import torch
-from torch import Tensor
-
-from PIL.ImageFile import ImageFile
+import torch.nn.functional as F
 
 from cscience.features.api.datatypes.core_datatypes.text_batch import TextBatch
 from cscience.features.api.feature.feature_base import FeatureBase
-from .clip_datatypes.clip_image_batch import ClipImageBatch
-from .clip_datatypes.clip_tensor_batch import ClipTensorBatch
 
 
-class ClipFeature(FeatureBase):
+
+
+class ClipSpatialFeature(FeatureBase):
     """CLIP feature service backed by OpenCLIP.
 
     Loads the model, tokenizer, preprocessing pipeline, and target device once.
@@ -28,44 +25,91 @@ class ClipFeature(FeatureBase):
         self._model_name = "xlm-roberta-base-ViT-B-32"
         self._pretrained = "laion5b_s13b_b90k"
 
-        self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._model, _, self.preprocess = open_clip.create_model_and_transforms(
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
             model_name = self._model_name,
             pretrained= self._pretrained,
         )
-        self._model = self._model.to(self._device).eval()
-        self._tokenizer = open_clip.get_tokenizer(self._model_name)
+        self.model = self.model.to(self._device).eval()
+        self.tokenizer = open_clip.get_tokenizer(self._model_name)
         self._initialized = True
 
 
     @classmethod
-    def text_batch(cls, texts: TextBatch) -> ClipTensorBatch:
-        """Embed a batch of text strings into normalized CLIP vectors."""
-        service = cls.get_instance()
-
-        tokens = service._tokenizer(texts.data()).to(service._device)
-
-        with torch.no_grad():
-            feats = service._model.encode_text(tokens)
-            feats = feats / feats.norm(dim=-1, keepdim=True)
-
-        vecs = feats.detach().float().cpu()
-        return ClipTensorBatch(vecs)
+    @torch.no_grad()
+    def score(cls, left: ClipSpatialTensor, right: ClipSpatialTensor):
+        left = F.normalize(left, dim=-1)
+        right = F.normalize(right, dim=-1)
+        # scalar score per image (assuming one prompt)
+        return (left @ right.T).squeeze(-1)
 
     @classmethod
-    def image_batch(cls, images: ClipImageBatch) -> ClipTensorBatch:
-        """Embed a batch of PIL images into normalized CLIP vectors."""
-        service = cls.get_instance()
+    @torch.no_grad()
+    def clip_embedd_norm_img_vectors(cls, img_tensor_batch: torch.Tensor):
+        # img_batch: [B,3,224,224] in preprocessed space
+        img_f = cls.model.encode_image(img_tensor_batch)
+        img_f = F.normalize(img_f, dim=-1)
+        return img_f
 
-        image_tensors = torch.stack([
-            service.preprocess(image)
-            for image in images.data()
-        ]).to(service._device)
+    @classmethod
+    @torch.no_grad()
+    def clip_embedd_norm_img(self, img: Image):
+        img_tensor = self.preprocess(img)
+        img_f = self.clip_embedd_norm_img_vectors(img_tensor)  # [1,D]
+        return img_f
 
-        with torch.inference_mode():
-            feats = service._model.encode_image(image_tensors)
-            feats = feats / feats.norm(dim=-1, keepdim=True)
 
-        vecs = feats.detach().float().cpu()
+    @classmethod
+    @torch.no_grad()
+    def clip_embedd_norm_txt_vectors(self, text_tokens: torch.Tensor):
+        txt_f = self._model.encode_text(text_tokens)
+        txt_f = F.normalize(txt_f, dim=-1)
+        return txt_f
 
-        return ClipTensorBatch(vecs)
+
+    @classmethod
+    @torch.no_grad()
+    def clip_embedd_norm_txt(self, text: str):
+        text_tokens = self.tokenize(text)
+        txt_f = self.clip_embedd_norm_txt_vectors(text_tokens)
+        return txt_f
+
+    @classmethod
+    def influence_calculator(self, img_f_base, img_f_masked, txt_f, mode: MaskingMode, clamp_positive=True, normalize=True):
+        if mode == MaskingMode.MASK_OUT:
+            return self.influence_calculator_similarity_decrease(img_f_base, img_f_masked, txt_f, clamp_positive, normalize)
+        elif mode == MaskingMode.KEEP_ONLY:
+            return self.influence_calculator_keep_similarity(img_f_base, img_f_masked, txt_f, normalize)
+        else:
+            raise ValueError(f"Unknown MaskingMode: {mode}")
+
+    @classmethod
+
+    @torch.no_grad()
+    def influence_calculator_similarity_decrease(self, img_f_base, img_f_masked, txt_f, clamp_positive=True,
+                                                 normalize=True):
+        base = self.clip_score(img_f_base, txt_f)  # [1]
+        scores = self.clip_score(img_f_masked, txt_f)  # [B]
+        deltas = base - scores  # [B] broadcast
+
+        if clamp_positive:
+            deltas = deltas.clamp(min=0.0)
+
+        if normalize:
+            d = deltas - deltas.min()
+            deltas = d / (d.max() + 1e-8)
+
+        return deltas
+
+    @classmethod
+
+    @torch.no_grad()
+    def influence_calculator_keep_similarity(self, img_f_base, img_f_masked, txt_f, normalize=True):
+        scores = self.clip_score(img_f_masked, txt_f)  # [B]
+        deltas = scores  # [B] broadcast
+
+        if normalize:
+            d = deltas - deltas.min()
+            deltas = d / (d.max() + 1e-8)
+
+        return deltas

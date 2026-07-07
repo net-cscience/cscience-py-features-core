@@ -1,7 +1,7 @@
 from typing import Callable, Generic, TypeVar
 
 from .conversion_key import ConversionKey
-from ..datatypes.datatype_base import DatatypeBase
+from ..datatypes.base.datatype_base import DatatypeBase
 from ..feature.feature_base import FeatureBase
 
 Tin = TypeVar('Tin', bound=DatatypeBase, contravariant=True)

@@ -4,8 +4,6 @@ from abc import ABC, abstractmethod
 
 from .conversion_key import ConversionKey
 from .converter import Converter
-from ..datatypes.datatype_base import DatatypeBase
-from ..feature.feature_base import FeatureBase
 
 
 class SearchStrategyBase(ABC):

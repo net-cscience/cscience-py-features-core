@@ -17,7 +17,7 @@ package = false
 [tool.uv.sources]
 cscience-feature-api = { workspace = true }
 cscience-feature-clip = { workspace = true }
-cscience-feature-yolo = { workspace = true }
+cscience-feature-clip-spatial = { workspace = true }
 
 [tool.uv.workspace]
 members = [

@@ -4,7 +4,7 @@ from ..conversion.conversion_key import ConversionKey
 from ..conversion.converter import Converter
 from ..conversion.search_strategy_base import SearchStrategyBase
 from ..conversion.search_strategy_most_specific import SearchStrategyMostSpecific
-from ..datatypes.datatype_base import DatatypeBase
+from ..datatypes.base.datatype_base import DatatypeBase
 
 from ..feature.feature_base import FeatureBase
 from ..registry.conversion_registry import ConversionRegistry

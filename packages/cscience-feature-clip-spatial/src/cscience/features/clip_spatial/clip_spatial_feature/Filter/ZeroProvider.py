@@ -1,10 +1,9 @@
 from typing import TYPE_CHECKING
-from abc import ABC, abstractmethod
 
-from .FilterProvider import FilterProvider
+from cscience.features.clip_spatial.clip_spatial_feature.Filter.FilterProvider import FilterProvider
 
 if TYPE_CHECKING:
-    from .MaskingGenerator import MaskingGenerator as MaskingGenerator
+    from cscience.features.clip_spatial.clip_spatial_feature.Masking.MaskingGenerator import MaskingGenerator as MaskingGenerator
 
 class ZeroProvider(FilterProvider):
 

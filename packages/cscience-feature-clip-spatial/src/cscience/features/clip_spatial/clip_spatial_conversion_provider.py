@@ -10,7 +10,7 @@ from cscience.features.clip.clip_datatypes.clip_image_batch import ClipImageBatc
 from cscience.features.clip.clip_datatypes.clip_tensor_batch import ClipTensorBatch
 
 
-class ClipConversionProvider(ConversionProviderBase):
+class ClipSpatialConversionProvider(ConversionProviderBase):
     """Registers datatype conversions required by the CLIP connector."""
     def __init__(self, feature: FeatureBase) -> None:
         super().__init__(feature)

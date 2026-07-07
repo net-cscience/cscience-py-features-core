@@ -1,57 +1,147 @@
 # Config
 from .config.config_base import ConfigBase
+
 # Connectors
 from .connector.connector_base import ConnectorBase
 from .connector.function_connector import FunctionConnector
+
 # Conversions
 from .conversion.conversion_provider_base import ConversionProviderBase
 from .conversion.converter import Converter
 from .conversion.search_strategy_base import SearchStrategyBase
 from .conversion.search_strategy_most_specific import SearchStrategyMostSpecific
-# Datatypes
-from .datatypes.core_datatypes.float_vector import FloatVector
-from .datatypes.core_datatypes.float_vector_batch import FloatVectorBatch
-from .datatypes.core_datatypes.text import Text
-from .datatypes.core_datatypes.text_batch import TextBatch
+
+# Datatype conversion provider
 from .datatypes.core_conversion_provider import CoreConversionProvider
-from .datatypes.core_datatype import CoreDatatype
-from .datatypes.datatype_base import DatatypeBase
+
+# Datatype base classes
+from .datatypes.base.audio_bytes_base import AudioBytesBase
+from .datatypes.base.batch_base import BatchBase
+from .datatypes.base.core_datatype import CoreDatatype
+from .datatypes.base.datatype_base import DatatypeBase
+from .datatypes.base.embedding_base import EmbeddingBase
+from .datatypes.base.image_bytes_base import ImageBytesBase
+from .datatypes.base.media_bytes_base import MediaBytesBase
+from .datatypes.base.vector_base import VectorBase
+from .datatypes.base.vector_batch_base import VectorBatchBase
+
+# Datatype references
+from .datatypes.references.data_url import DataUrl
+from .datatypes.references.file_path import FilePath
+
+# Text datatypes
+from .datatypes.text.text import Text
+from .datatypes.text.text_batch import TextBatch
+
+# Image datatypes
+from .datatypes.image.image_bytes import ImageBytes
+from .datatypes.image.image_data_url import ImageDataUrl
+from .datatypes.image.pil_image import PilImage
+from .datatypes.image.pil_image_batch import PilImageBatch
+
+# Audio datatypes
+from .datatypes.audio.audio_bytes import AudioBytes
+from .datatypes.audio.audio_signal import AudioSignal, AudioSignalData
+
+# Scalar primitive datatypes
+from .datatypes.primitives_scalar.bool_value import BoolValue
+from .datatypes.primitives_scalar.float_value import FloatValue
+from .datatypes.primitives_scalar.int_value import IntValue
+
+# Primitive vector datatypes
+from .datatypes.primitives_vectors.bool_vector import BoolVector
+from .datatypes.primitives_vectors.bool_vector_batch import BoolVectorBatch
+from .datatypes.primitives_vectors.float_vector import FloatVector
+from .datatypes.primitives_vectors.float_vector_batch import FloatVectorBatch
+from .datatypes.primitives_vectors.int_vector import IntVector
+from .datatypes.primitives_vectors.int_vector_batch import IntVectorBatch
+from .datatypes.primitives_vectors.primitive_vector_base import PrimitiveVectorBase
+from .datatypes.primitives_vectors.primitive_vector_batch_base import PrimitiveVectorBatchBase
+
 # Features
 from .feature.feature_base import FeatureBase
 from .feature.feature_info import FeatureInfo
 from .feature.service_info import ServiceInfo
+
 # Registry
 from .registry.conversion_registry import ConversionRegistry
 from .registry.registry_base import RegistryBase
+
 # Utils
 from .utils.measure_time import measure_time
+
+
 __all__ = [
     # Config
     "ConfigBase",
+
     # Connectors
     "ConnectorBase",
     "FunctionConnector",
+
     # Conversions
     "ConversionProviderBase",
     "Converter",
     "SearchStrategyBase",
     "SearchStrategyMostSpecific",
-    # Datatypes
-    "FloatVector",
-    "FloatVectorBatch",
-    "Text",
-    "TextBatch",
+
+    # Datatype conversion provider
     "CoreConversionProvider",
+
+    # Datatype base classes
+    "AudioBytesBase",
+    "BatchBase",
     "CoreDatatype",
     "DatatypeBase",
+    "EmbeddingBase",
+    "ImageBytesBase",
+    "MediaBytesBase",
+    "VectorBase",
+    "VectorBatchBase",
+
+    # Datatype references
+    "DataUrl",
+    "FilePath",
+
+    # Text datatypes
+    "Text",
+    "TextBatch",
+
+    # Image datatypes
+    "ImageBytes",
+    "ImageDataUrl",
+    "PilImage",
+    "PilImageBatch",
+
+    # Audio datatypes
+    # "AudioBytes",
+    # "AudioSignal",
+    # "AudioSignalData",
+
+    # Scalar primitive datatypes
+    "BoolValue",
+    "FloatValue",
+    "IntValue",
+
+    # Primitive vector datatypes
+    "BoolVector",
+    "BoolVectorBatch",
+    "FloatVector",
+    "FloatVectorBatch",
+    "IntVector",
+    "IntVectorBatch",
+    "PrimitiveVectorBase",
+    #"PrimitiveVectorBatchBase",
+
     # Features
     "FeatureBase",
     "FeatureInfo",
     "ServiceInfo",
+
     # Registry
     "ConversionRegistry",
     "RegistryBase",
-    # Utils
-    "measure_time"
-]
 
+    # Utils
+    "measure_time",
+]

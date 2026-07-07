@@ -3,7 +3,11 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-api.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-asr-whisper.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-asr-whisper.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-clip.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-clip.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-clip-spatial.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-clip-spatial.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-nsfw-image.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-nsfw-image.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-ocr-tesseract.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-ocr-tesseract.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-py-features-core.iml" filepath="$PROJECT_DIR$/.idea/cscience-py-features-core.iml" />
     </modules>
   </component>

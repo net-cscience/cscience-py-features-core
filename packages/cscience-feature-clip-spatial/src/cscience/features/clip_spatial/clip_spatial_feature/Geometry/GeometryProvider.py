@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import torch
 
 if TYPE_CHECKING:
-    from .MaskingGenerator import MaskingGenerator
+    from cscience.features.clip_spatial.clip_spatial_feature.Masking.MaskingGenerator import MaskingGenerator
 
 
 class GeometryProvider(ABC):

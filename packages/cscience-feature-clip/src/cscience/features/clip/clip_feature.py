@@ -1,71 +1,85 @@
-
 from __future__ import annotations
-
-from typing import List
 
 import open_clip
 import torch
-from torch import Tensor
 
-from PIL.ImageFile import ImageFile
-
-from cscience.features.api.datatypes.core_datatypes.text_batch import TextBatch
+from cscience.features.api.datatypes.image.pil_image_batch import PilImageBatch
+from cscience.features.api.datatypes.text.text_batch import TextBatch
 from cscience.features.api.feature.feature_base import FeatureBase
-from .clip_datatypes.clip_image_batch import ClipImageBatch
-from .clip_datatypes.clip_tensor_batch import ClipTensorBatch
+
+from .clip_datatypes.clip_tensor_batch import ClipTensorBatch, ClipTensorBatchData
 
 
 class ClipFeature(FeatureBase):
-    """CLIP feature service backed by OpenCLIP.
-
-    Loads the model, tokenizer, preprocessing pipeline, and target device once.
-    Public methods operate on CLIP-specific datatype wrappers.
-    """
+    """CLIP feature service backed by OpenCLIP."""
 
     def _initialize(self) -> None:
         if self._initialized:
             return
+
         self._model_name = "xlm-roberta-base-ViT-B-32"
         self._pretrained = "laion5b_s13b_b90k"
 
-        self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self._model, _, self.preprocess = open_clip.create_model_and_transforms(
-            model_name = self._model_name,
-            pretrained= self._pretrained,
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+            model_name=self._model_name,
+            pretrained=self._pretrained,
         )
-        self._model = self._model.to(self._device).eval()
-        self._tokenizer = open_clip.get_tokenizer(self._model_name)
+
+        self.model = self.model.to(self.device).eval()
+        self.tokenizer = open_clip.get_tokenizer(self._model_name)
+
         self._initialized = True
 
-
     @classmethod
+    @torch.inference_mode()
     def text_batch(cls, texts: TextBatch) -> ClipTensorBatch:
         """Embed a batch of text strings into normalized CLIP vectors."""
         service = cls.get_instance()
 
-        tokens = service._tokenizer(texts.data()).to(service._device)
+        ordered_items = sorted(texts.data().items(), key=lambda item: item[0])
+        keys = tuple(key for key, _ in ordered_items)
+        values = [text for _, text in ordered_items]
 
-        with torch.no_grad():
-            feats = service._model.encode_text(tokens)
-            feats = feats / feats.norm(dim=-1, keepdim=True)
+        tokens = service.tokenizer(values).to(service.device)
 
-        vecs = feats.detach().float().cpu()
-        return ClipTensorBatch(vecs)
+        feats = service.model.encode_text(tokens)
+        feats = feats / feats.norm(dim=-1, keepdim=True)
+
+        vectors = feats.detach().float().cpu()
+
+        return ClipTensorBatch(
+            ClipTensorBatchData(
+                keys=keys,
+                vectors=vectors,
+            )
+        )
 
     @classmethod
-    def image_batch(cls, images: ClipImageBatch) -> ClipTensorBatch:
+    @torch.inference_mode()
+    def image_batch(cls, images: PilImageBatch) -> ClipTensorBatch:
         """Embed a batch of PIL images into normalized CLIP vectors."""
         service = cls.get_instance()
 
-        image_tensors = torch.stack([
-            service.preprocess(image)
-            for image in images.data()
-        ]).to(service._device)
+        ordered_items = sorted(images.data().items(), key=lambda item: item[0])
+        keys = tuple(key for key, _ in ordered_items)
 
-        with torch.inference_mode():
-            feats = service._model.encode_image(image_tensors)
-            feats = feats / feats.norm(dim=-1, keepdim=True)
+        image_tensors = torch.stack(
+            [
+                service.preprocess(image)
+                for _, image in ordered_items
+            ]
+        ).to(service.device)
 
-        vecs = feats.detach().float().cpu()
+        feats = service.model.encode_image(image_tensors)
+        feats = feats / feats.norm(dim=-1, keepdim=True)
 
-        return ClipTensorBatch(vecs)
+        vectors = feats.detach().float().cpu()
+
+        return ClipTensorBatch(
+            ClipTensorBatchData(
+                keys=keys,
+                vectors=vectors,
+            )
+        )

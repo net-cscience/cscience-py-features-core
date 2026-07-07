@@ -1,0 +1,24 @@
+[project]
+name = "cscience-feature-ocr-tesseract"
+version = "0.1.0"
+description = "Tesseract OCR feature implementation for the CScience feature API."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "cscience-feature-api",
+    "pillow>=12.3.0,<13",
+    "pytesseract>=0.3.13,<1",
+]
+
+[tool.uv.sources]
+cscience-feature-api = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/cscience"]
+sources = ["src"]
+
+[project.entry-points."cscience.features"]
+ocr_tesseract = "cscience.features.ocr_tesseract:register"

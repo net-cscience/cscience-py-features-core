@@ -1,8 +1,9 @@
-from cscience.features.api.datatypes.base.vector_base import VectorBase
-from cscience.features.api.datatypes.core_datatype import CoreDatatype
+from cscience.features.api.datatypes.base.embedding_base import EmbeddingBase
+
+from .primitive_vector_base import PrimitiveVectorBase
 
 
-class FloatVector(VectorBase[list[float]], CoreDatatype[list[float]]):
+class FloatVector(PrimitiveVectorBase[float], EmbeddingBase):
+    """Single float vector."""
 
-    def __init__(self, data:list[float], assert_length: int|None=None) -> None:
-        super().__init__(data, assert_length)
+    element_type = float

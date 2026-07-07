@@ -6,7 +6,7 @@ import seaborn as sns
 import torch.nn.functional as F
 from matplotlib.axis import Axis
 
-from .MaskingGenerator import MaskingGenerator
+from cscience.features.clip_spatial.clip_spatial_feature.Masking.MaskingGenerator import MaskingGenerator
 
 font_scale = 1.0
 rc = {

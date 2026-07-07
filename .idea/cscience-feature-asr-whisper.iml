@@ -2,8 +2,11 @@
 <module external.system.id="pyproject.toml" type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$/packages/cscience-feature-asr-whisper">
-      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-asr-whisper/src" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-asr-whisper/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-asr-whisper/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-asr-whisper/.venv" />
     </content>
+    <orderEntry type="jdk" jdkName="uv (cscience-feature-asr-whisper)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

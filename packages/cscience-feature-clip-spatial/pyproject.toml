@@ -1,7 +1,7 @@
 [project]
-name = "cscience-feature-clip"
+name = "cscience-feature-clip-spatial"
 version = "0.1.0"
-description = "CLIP feature implementation for the CScience feature API."
+description = "CLIP Spatial feature implementation for the CScience feature API."
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "cscience-feature-api",

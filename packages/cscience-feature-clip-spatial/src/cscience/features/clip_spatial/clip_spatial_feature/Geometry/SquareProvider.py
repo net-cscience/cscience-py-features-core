@@ -2,10 +2,10 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from .GeometryProvider import GeometryProvider
+from cscience.features.clip_spatial.clip_spatial_feature.Geometry.GeometryProvider import GeometryProvider
 
 if TYPE_CHECKING:
-    from .MaskingGenerator import MaskingGenerator
+    from cscience.features.clip_spatial.clip_spatial_feature.Masking.MaskingGenerator import MaskingGenerator
 
 
 class SquareProvider(GeometryProvider):
