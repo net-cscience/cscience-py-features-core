@@ -1,6 +1,6 @@
 from abc import ABC
 
-from cscience.features.api.datatypes.datatype_base import DatatypeBase
+from cscience.features.api import DatatypeBase
 
 
 class OcrTesseractDatatype(DatatypeBase, ABC):

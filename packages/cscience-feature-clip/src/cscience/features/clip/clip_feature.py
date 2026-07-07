@@ -35,51 +35,44 @@ class ClipFeature(FeatureBase):
     @classmethod
     @torch.inference_mode()
     def text_batch(cls, texts: TextBatch) -> ClipTensorBatch:
-        """Embed a batch of text strings into normalized CLIP vectors."""
         service = cls.get_instance()
 
-        ordered_items = sorted(texts.data().items(), key=lambda item: item[0])
-        keys = tuple(key for key, _ in ordered_items)
-        values = [text for _, text in ordered_items]
+        keys = texts.ordered_keys()
+        values = list(texts.ordered_values())
 
         tokens = service.tokenizer(values).to(service.device)
 
         feats = service.model.encode_text(tokens)
         feats = feats / feats.norm(dim=-1, keepdim=True)
 
-        vectors = feats.detach().float().cpu()
-
         return ClipTensorBatch(
             ClipTensorBatchData(
                 keys=keys,
-                vectors=vectors,
+                vectors=feats.detach().float().cpu(),
             )
         )
 
     @classmethod
     @torch.inference_mode()
     def image_batch(cls, images: PilImageBatch) -> ClipTensorBatch:
-        """Embed a batch of PIL images into normalized CLIP vectors."""
         service = cls.get_instance()
 
-        ordered_items = sorted(images.data().items(), key=lambda item: item[0])
-        keys = tuple(key for key, _ in ordered_items)
+        keys = images.ordered_keys()
+        values = images.ordered_values()
 
         image_tensors = torch.stack(
             [
                 service.preprocess(image)
-                for _, image in ordered_items
+                for image in values
             ]
         ).to(service.device)
 
         feats = service.model.encode_image(image_tensors)
         feats = feats / feats.norm(dim=-1, keepdim=True)
 
-        vectors = feats.detach().float().cpu()
-
         return ClipTensorBatch(
             ClipTensorBatchData(
                 keys=keys,
-                vectors=vectors,
+                vectors=feats.detach().float().cpu(),
             )
         )

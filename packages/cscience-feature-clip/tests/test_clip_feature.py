@@ -35,7 +35,7 @@ class FeatureTest(unittest.TestCase):
         self.images_batch = []
 
     def _resource(self, name: str) -> Path:
-        return Path(__file__).resolve().parents[1] / "resources" / "test" / name
+        return Path(__file__).resolve().parents[1] / "fixtures" / "test" / name
 
     @measure_time(times=N, ignore_first=True)
     def test_clip_text_to_vector(self):

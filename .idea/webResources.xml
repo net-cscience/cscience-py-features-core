@@ -11,6 +11,28 @@
           </resourceRoots>
         </entryData>
       </entry>
+      <entry url="file://$PROJECT_DIR$/packages/cscience-feature-clip">
+        <entryData>
+          <resourceRoots>
+            <path value="file://$PROJECT_DIR$/packages/cscience-feature-clip/tests/fixtures" />
+          </resourceRoots>
+        </entryData>
+      </entry>
+      <entry url="file://$PROJECT_DIR$/packages/cscience-feature-nsfw-image">
+        <entryData>
+          <resourceRoots>
+            <path value="file://$PROJECT_DIR$/packages/cscience-feature-nsfw-image/resources" />
+            <path value="file://$PROJECT_DIR$/packages/cscience-feature-nsfw-image/tests/fixtures" />
+          </resourceRoots>
+        </entryData>
+      </entry>
+      <entry url="file://$PROJECT_DIR$/packages/cscience-feature-ocr-tesseract">
+        <entryData>
+          <resourceRoots>
+            <path value="file://$PROJECT_DIR$/packages/cscience-feature-ocr-tesseract/tests/fixtures" />
+          </resourceRoots>
+        </entryData>
+      </entry>
     </contentEntries>
   </component>
 </project>

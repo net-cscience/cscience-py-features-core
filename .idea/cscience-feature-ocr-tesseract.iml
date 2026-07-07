@@ -4,7 +4,10 @@
     <content url="file://$MODULE_DIR$/packages/cscience-feature-ocr-tesseract">
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-ocr-tesseract/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-ocr-tesseract/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-ocr-tesseract/.venv" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="cscience-feature-api" exported="" />
+    <orderEntry type="jdk" jdkName="uv (cscience-feature-ocr-tesseract)" jdkType="Python SDK" />
   </component>
 </module>

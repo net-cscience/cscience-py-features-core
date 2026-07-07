@@ -1,13 +1,17 @@
 import argparse
-import unittest
+from datetime import datetime
 from pathlib import Path
 
 
 
 def export_filestructure(args: argparse.Namespace) -> None:
-    export_file = Path(__file__).parent / "exported_file_structure.txt"
+    export_file = Path(__file__).parent / "export" / "exported_file_structure.txt"
     root_dir = Path(args.root)
     files = list(root_dir.glob("**/*.py"))
+
+    with open(export_file, "w") as ef:
+        ef.write(f"# Exported file structure on {datetime.now()} with root dir {root_dir}\n")
+
     # Attach to export file
     for file in files:
         if file.name == "exported_code.py":
@@ -18,9 +22,12 @@ def export_filestructure(args: argparse.Namespace) -> None:
             ef.write(content)
 
 def export_py(args):
-    export_file = Path(__file__).parent / "exported_code.py"
+    export_file = Path(__file__).parent / "export" / "exported_code.py"
     root_dir = Path(args.root)
     files = list(root_dir.glob("**/*.py"))
+
+    with open(export_file, "w") as ef:
+        ef.write(f"# Exported code on {datetime.now()} with root dir {root_dir}\n")
 
     # Attach to export file
     for file in files:
@@ -35,9 +42,12 @@ def export_py(args):
 
 
 def export_toml(args):
-    export_file = Path(__file__).parent / "exported_toml.toml"
+    export_file = Path(__file__).parent / "export" / "exported_toml.toml"
     root_dir = Path(args.root)
     files = list(root_dir.glob("**/*.toml"))
+
+    with open(export_file, "w") as ef:
+        ef.write(f"# Exported TOML on {datetime.now()} with root dir {root_dir}\n")
 
     # Attach to export file
     for file in files:

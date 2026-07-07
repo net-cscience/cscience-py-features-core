@@ -23,6 +23,8 @@ cscience-feature-clip-spatial = { workspace = true }
 members = [
     "packages/cscience-feature-api",
     "packages/cscience-feature-clip",
+    "packages/cscience-feature-nsfw-image",
+    "packages/cscience-feature-ocr-tesseract"
 ]
 
 [dependency-groups]

@@ -8,15 +8,7 @@ V = TypeVar("V")
 
 
 class VectorBatchBase(BatchBase[V], ABC, Generic[V]):
-    """Mixin for indexed batches of vectors.
-
-    Guarantee:
-    - data is a non-empty mapping from int source indices to vectors
-    - each vector is non-empty
-    - all vectors have the same length
-    - batch_size() returns the number of vectors
-    - length() returns the shared vector dimension
-    """
+    """Mixin for indexed batches of vectors."""
 
     def _validate_vector_batch_mapping(self, data: Mapping[int, V]) -> None:
         self._validate_batch_mapping(data)
@@ -42,8 +34,7 @@ class VectorBatchBase(BatchBase[V], ABC, Generic[V]):
 
     def length(self) -> int:
         """Return the shared vector dimension."""
-        first_vector = next(iter(self.data().values()))
-        return len(first_vector)
+        return len(self.ordered_values()[0])
 
     def assert_length(self, expected: int) -> None:
         """Raise if the shared vector dimension does not match the expected value."""

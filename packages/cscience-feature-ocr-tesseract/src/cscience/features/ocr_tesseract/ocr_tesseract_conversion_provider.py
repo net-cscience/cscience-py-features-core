@@ -1,40 +1,56 @@
-import base64
-from io import BytesIO
-from urllib.parse import unquote
+from cscience.features.api import (
+    ConversionProviderBase,
+    Converter,
+    FeatureBase,
+    Text,
+    TextBatch,
+)
 
-from PIL import Image
-
-from cscience.features.api.conversion.conversion_provider_base import ConversionProviderBase
-from cscience.features.api.conversion.converter import Converter
-from cscience.features.api.datatypes.core_datatypes.text import Text
-from cscience.features.api.feature.feature_base import FeatureBase
-
-from .ocr_tesseract_datatypes.image_bytes import ImageBytes
-from .ocr_tesseract_datatypes.image_data_url import ImageDataUrl
-from .ocr_tesseract_datatypes.ocr_image import OcrImage
 from .ocr_tesseract_datatypes.ocr_result import OcrResult
+from .ocr_tesseract_datatypes.ocr_result_batch import OcrResultBatch
 
 
-def image_data_url_to_bytes(data_url: ImageDataUrl) -> ImageBytes:
-    """Decode a base64 image data URL into raw bytes."""
-    data = unquote(data_url.data())
-
-    if not data or "base64," not in data:
-        raise ValueError("Missing or invalid base64 image data.")
-
-    _, encoded = data.split("base64,", 1)
-    return ImageBytes(base64.b64decode(encoded))
+def ocr_result_passthrough(result: OcrResult) -> OcrResult:
+    return result
 
 
-def image_bytes_to_image(image_bytes: ImageBytes) -> OcrImage:
-    """Decode image bytes into a Pillow image."""
-    image = Image.open(BytesIO(image_bytes.data()))
-    return OcrImage(image)
+def ocr_result_batch_passthrough(batch: OcrResultBatch) -> OcrResultBatch:
+    return batch
 
 
 def ocr_result_to_text(result: OcrResult) -> Text:
-    """Extract plain text from an OCR result."""
     return Text(result.data().text)
+
+
+def ocr_result_batch_to_result(batch: OcrResultBatch) -> OcrResult:
+    results = batch.data().results
+
+    if len(results) != 1:
+        raise ValueError(
+            f"Cannot convert OcrResultBatch of size {len(results)} to OcrResult."
+        )
+
+    return OcrResult(next(iter(results.values())))
+
+
+def ocr_result_batch_to_text(batch: OcrResultBatch) -> Text:
+    results = batch.data().results
+
+    if len(results) != 1:
+        raise ValueError(
+            f"Cannot convert OcrResultBatch of size {len(results)} to Text."
+        )
+
+    return Text(next(iter(results.values())).text)
+
+
+def ocr_result_batch_to_text_batch(batch: OcrResultBatch) -> TextBatch:
+    return TextBatch(
+        {
+            key: result.text
+            for key, result in batch.data().results.items()
+        }
+    )
 
 
 class OcrTesseractConversionProvider(ConversionProviderBase):
@@ -45,25 +61,46 @@ class OcrTesseractConversionProvider(ConversionProviderBase):
 
     def register_converters(self) -> list[Converter]:
         return [
-            Converter(
-                name="image_data_url_to_bytes",
+            Converter[OcrResult, OcrResult](
+                name="ocr_result_passthrough",
                 source=self._feature,
-                function=image_data_url_to_bytes,
-                input_type=ImageDataUrl,
-                output_type=ImageBytes,
+                function=ocr_result_passthrough,
+                input_type=OcrResult,
+                output_type=OcrResult,
             ),
-            Converter(
-                name="image_bytes_to_image",
+            Converter[OcrResultBatch, OcrResultBatch](
+                name="ocr_result_batch_passthrough",
                 source=self._feature,
-                function=image_bytes_to_image,
-                input_type=ImageBytes,
-                output_type=OcrImage,
+                function=ocr_result_batch_passthrough,
+                input_type=OcrResultBatch,
+                output_type=OcrResultBatch,
             ),
-            Converter(
+            Converter[OcrResult, Text](
                 name="ocr_result_to_text",
                 source=self._feature,
                 function=ocr_result_to_text,
                 input_type=OcrResult,
                 output_type=Text,
+            ),
+            Converter[OcrResultBatch, OcrResult](
+                name="ocr_result_batch_to_result",
+                source=self._feature,
+                function=ocr_result_batch_to_result,
+                input_type=OcrResultBatch,
+                output_type=OcrResult,
+            ),
+            Converter[OcrResultBatch, Text](
+                name="ocr_result_batch_to_text",
+                source=self._feature,
+                function=ocr_result_batch_to_text,
+                input_type=OcrResultBatch,
+                output_type=Text,
+            ),
+            Converter[OcrResultBatch, TextBatch](
+                name="ocr_result_batch_to_text_batch",
+                source=self._feature,
+                function=ocr_result_batch_to_text_batch,
+                input_type=OcrResultBatch,
+                output_type=TextBatch,
             ),
         ]

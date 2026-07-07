@@ -12,9 +12,7 @@ class BatchBase(ABC, Generic[T]):
     - batch data is a non-empty mapping
     - keys are integer source indices
     - values are batch elements
-
-    Ordering is not part of the guarantee. Converters that need ordered output
-    must explicitly sort by key.
+    - ordered_* methods return the canonical order by ascending source index
     """
 
     def _validate_batch_mapping(self, data: Mapping[int, T]) -> None:
@@ -31,3 +29,15 @@ class BatchBase(ABC, Generic[T]):
     def batch_size(self) -> int:
         """Return the number of batch elements."""
         return len(self.data())
+
+    def ordered_keys(self) -> tuple[int, ...]:
+        """Return source indices in canonical batch order."""
+        return tuple(sorted(self.data().keys()))
+
+    def ordered_values(self) -> tuple[T, ...]:
+        """Return values in canonical batch order."""
+        return tuple(self.data()[key] for key in self.ordered_keys())
+
+    def ordered_items(self) -> tuple[tuple[int, T], ...]:
+        """Return items in canonical batch order."""
+        return tuple((key, self.data()[key]) for key in self.ordered_keys())
