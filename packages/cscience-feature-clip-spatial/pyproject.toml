@@ -1,22 +1,3 @@
-# From D:\myRepo\net.cscience\cscience-py-features-core\packages\cscience-feature-api\pyproject.toml
-[project]
-name = "cscience-feature-api"
-version = "0.1.0"
-requires-python = ">=3.13"
-dependencies = [
-    "pydantic>=2.13.4",
-]
-
-[build-system]
-requires = ["hatchling>=1.27"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-only-include = ["src/cscience"]
-sources = ["src"]
-
-
-# From D:\myRepo\net.cscience\cscience-py-features-core\packages\cscience-feature-clip\pyproject.toml
 [project]
 name = "cscience-feature-clip"
 version = "0.1.0"
@@ -69,4 +50,3 @@ only-include = [
 
 [project.entry-points."cscience.features"]
 clip = "cscience.features.clip:register"
-

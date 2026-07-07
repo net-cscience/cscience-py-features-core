@@ -1,5 +1,5 @@
-from cscience.features.api.datatypes.vector_base import VectorBase
-from ..core_datatype import CoreDatatype
+from cscience.features.api.datatypes.base.vector_base import VectorBase
+from cscience.features.api.datatypes.core_datatype import CoreDatatype
 
 
 class FloatVector(VectorBase[list[float]], CoreDatatype[list[float]]):

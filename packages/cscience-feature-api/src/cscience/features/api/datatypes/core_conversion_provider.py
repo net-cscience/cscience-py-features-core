@@ -1,18 +1,11 @@
 from typing import List
 
-from ..conversion.converter import Converter
-from ..feature.feature_base import FeatureBase
-from ..registry.conversion_registry import ConversionRegistry
-
-
-from typing import List
-
 from cscience.features.api.conversion.conversion_provider_base import ConversionProviderBase
 from cscience.features.api.conversion.converter import Converter
 from cscience.features.api.datatypes.core_datatypes.float_vector import FloatVector
 from cscience.features.api.datatypes.core_datatypes.float_vector_batch import FloatVectorBatch
-from cscience.features.api.datatypes.core_datatypes.text import Text
-from cscience.features.api.datatypes.core_datatypes.text_batch import TextBatch
+from cscience.features.api.datatypes.text.text import Text
+from cscience.features.api.datatypes.text.text_batch import TextBatch
 from cscience.features.api.feature.feature_base import FeatureBase
 
 

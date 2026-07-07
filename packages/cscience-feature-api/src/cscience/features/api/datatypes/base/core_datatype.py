@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Generic, TypeVar
 
-from .datatype_base import DatatypeBase
+from cscience.features.api.datatypes.datatype_base import DatatypeBase
 T = TypeVar("T")
 
 

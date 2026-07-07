@@ -1,4 +1,4 @@
-from ..core_datatype import CoreDatatype
+from cscience.features.api.datatypes.core_datatype import CoreDatatype
 
 class Text(CoreDatatype[str]):
 

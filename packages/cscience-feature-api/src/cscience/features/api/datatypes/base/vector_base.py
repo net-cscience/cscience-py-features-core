@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from cscience.features.api.datatypes.datatype_base import DatatypeBase
 
