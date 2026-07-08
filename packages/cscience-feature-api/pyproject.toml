@@ -5,6 +5,7 @@ requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.13.4",
     "pillow>=12.3.0,<13",
+    "icontract>=2.7.3",
 ]
 
 [build-system]

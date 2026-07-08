@@ -3,9 +3,10 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial">
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial/tests" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial/tests" isTestSource="true" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module" module-name="cscience-feature-api" exported="" />
     <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
   </component>
 </module>

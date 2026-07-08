@@ -2,14 +2,17 @@
 <module external.system.id="pyproject.toml" type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-yolo" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-yolo/src/cscience/features" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/tools/export" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="cscience-feature-clip" exported="" />
+    <orderEntry type="module" module-name="cscience-feature-ocr-tesseract" exported="" />
+    <orderEntry type="module" module-name="cscience-feature-asr-whisper" exported="" />
     <orderEntry type="module" module-name="cscience-feature-api" exported="" />
+    <orderEntry type="module" module-name="cscience-feature-clip-spatial" exported="" />
+    <orderEntry type="module" module-name="cscience-feature-nsfw-image" exported="" />
     <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
   </component>
 </module>

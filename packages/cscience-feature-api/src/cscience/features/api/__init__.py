@@ -29,6 +29,14 @@ from .datatypes.base.vector_batch_base import VectorBatchBase
 from .datatypes.references.data_url import DataUrl
 from .datatypes.references.file_path import FilePath
 
+# Spa
+from .datatypes.spatial.spatial_batch_layout import SpatialBatchLayout
+from .datatypes.spatial.spatial_region import SpatialRegion
+from .datatypes.spatial.spatial_vector_batch_data import SpatialVectorBatchData
+from .datatypes.spatial.spatial_vector_batch_base import SpatialVectorBatchBase
+from .datatypes.spatial.spatial_primitive_vector_batch_base import SpatialPrimitiveVectorBatchBase
+from .datatypes.spatial.spatial_float_vector_batch import SpatialFloatVectorBatch
+
 # Text datatypes
 from .datatypes.text.text import Text
 from .datatypes.text.text_batch import TextBatch
@@ -102,6 +110,14 @@ __all__ = [
     # Datatype references
     "DataUrl",
     "FilePath",
+
+    # Spatial datatypes
+    "SpatialBatchLayout",
+    "SpatialRegion",
+    "SpatialVectorBatchData",
+    "SpatialVectorBatchBase",
+    "SpatialPrimitiveVectorBatchBase",
+    "SpatialFloatVectorBatch",
 
     # Text datatypes
     "Text",

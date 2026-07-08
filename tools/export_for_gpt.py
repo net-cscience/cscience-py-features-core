@@ -9,16 +9,16 @@ def export_filestructure(args: argparse.Namespace) -> None:
     root_dir = Path(args.root)
     files = list(root_dir.glob("**/*.py"))
 
-    with open(export_file, "w") as ef:
+    with open(export_file, "w",encoding="utf-8") as ef:
         ef.write(f"# Exported file structure on {datetime.now()} with root dir {root_dir}\n")
 
     # Attach to export file
     for file in files:
         if file.name == "exported_code.py":
             continue
-        with open(file, "r") as f:
+        with open(file, "r",encoding="utf-8") as f:
             content = f"{str(file)}\n"
-        with open(export_file, "a") as ef:
+        with open(export_file, "a",encoding="utf-8") as ef:
             ef.write(content)
 
 def export_py(args):
@@ -26,16 +26,20 @@ def export_py(args):
     root_dir = Path(args.root)
     files = list(root_dir.glob("**/*.py"))
 
-    with open(export_file, "w") as ef:
+    with open(export_file, "w",encoding="utf-8") as ef:
         ef.write(f"# Exported code on {datetime.now()} with root dir {root_dir}\n")
 
     # Attach to export file
     for file in files:
         if file.name == "exported_code.py":
             continue
-        with open(file, "r") as f:
-            content = f.read()
-        with open(export_file, "a") as ef:
+        with open(file, "r",encoding="utf-8") as f:
+            try:
+                content = f.read()
+            except UnicodeDecodeError:
+                print(f"Skipping {file} due to encoding issues.")
+                continue
+        with open(export_file, "a",encoding="utf-8") as ef:
             ef.write(f"# From {file}\n")
             ef.write(content)
             ef.write("\n\n")
@@ -46,16 +50,16 @@ def export_toml(args):
     root_dir = Path(args.root)
     files = list(root_dir.glob("**/*.toml"))
 
-    with open(export_file, "w") as ef:
+    with open(export_file, "w",encoding="utf-8") as ef:
         ef.write(f"# Exported TOML on {datetime.now()} with root dir {root_dir}\n")
 
     # Attach to export file
     for file in files:
         if file.name == "exported_toml.toml":
             continue
-        with open(file, "r") as f:
+        with open(file, "r",encoding="utf-8") as f:
             content = f.read()
-        with open(export_file, "a") as ef:
+        with open(export_file, "a",encoding="utf-8") as ef:
             ef.write(f"# From {file}\n")
             ef.write(content)
             ef.write("\n\n")

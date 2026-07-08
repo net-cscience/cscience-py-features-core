@@ -1,59 +1,66 @@
-from typing import List
+# packages/cscience-feature-clip-spatial/src/cscience/features/clip_spatial/clip_spatial_conversion_provider.py
 
-from cscience.features.api.conversion.conversion_provider_base import ConversionProviderBase
-from cscience.features.api.conversion.converter import Converter
-from cscience.features.api.datatypes.core_datatypes.float_vector import FloatVector
-from cscience.features.api.datatypes.core_datatypes.float_vector_batch import FloatVectorBatch
-from cscience.features.api.feature.feature_base import FeatureBase
-from cscience.features.clip.clip_datatypes.clip_image import ClipImage
-from cscience.features.clip.clip_datatypes.clip_image_batch import ClipImageBatch
-from cscience.features.clip.clip_datatypes.clip_tensor_batch import ClipTensorBatch
+from cscience.features.api import (
+    ConversionProviderBase,
+    Converter,
+    FeatureBase,
+    SpatialFloatVectorBatch,
+    SpatialVectorBatchData,
+)
+
+from .clip_spatial_datatypes.clip_spatial_tensor_batch import ClipSpatialTensorBatch
+
+
+
 
 
 class ClipSpatialConversionProvider(ConversionProviderBase):
-    """Registers datatype conversions required by the CLIP connector."""
+    """Registers conversions required by CLIP Spatial."""
+
     def __init__(self, feature: FeatureBase) -> None:
         super().__init__(feature)
 
-    def register_converters(self) -> List[Converter]:
-        """Return CLIP-specific input and output converters."""
-        converters = [
-            Converter[ClipImage, ClipImageBatch]
-                (
-                name="image_to_image_batch",
+    def register_converters(self) -> list[Converter]:
+        return [
+            Converter[ClipSpatialTensorBatch, ClipSpatialTensorBatch](
+                name="clip_spatial_tensor_batch_passthrough",
                 source=self._feature,
-                function=lambda x: ClipImageBatch([x.data()]),
-                input_type=ClipImage,
-                output_type=ClipImageBatch
+                function=self.clip_spatial_tensor_batch_passthrough,
+                input_type=ClipSpatialTensorBatch,
+                output_type=ClipSpatialTensorBatch,
             ),
-            Converter[ClipImageBatch, ClipImageBatch]
-                (
-                name="image_batch_passtrough",
+            Converter[ClipSpatialTensorBatch, SpatialFloatVectorBatch](
+                name="clip_spatial_tensor_batch_to_spatial_float_vector_batch",
                 source=self._feature,
-                function=lambda x: x,
-                input_type=ClipImageBatch,
-                output_type=ClipImageBatch
-            ),
-            Converter[ClipTensorBatch, FloatVector]
-                (
-                name="tensor_batch_to_float_vector",
-                source=self._feature,
-                function=lambda x: FloatVector(x.data()[0].tolist()),
-                input_type=ClipTensorBatch,
-                output_type=FloatVector
-            ),
-            Converter[ClipTensorBatch, FloatVectorBatch]
-                (
-                name="tensor_batch_to_float_vector_batch",
-                source=self._feature,
-                function=lambda x: FloatVectorBatch(
-                    {
-                        i: vector
-                        for i, vector in enumerate(x.data().tolist())
-                    }
-                ),
-                input_type=ClipTensorBatch,
-                output_type=FloatVectorBatch
+                function=self.clip_spatial_tensor_batch_to_spatial_float_vector_batch,
+                input_type=ClipSpatialTensorBatch,
+                output_type=SpatialFloatVectorBatch,
             ),
         ]
-        return converters
+
+
+    def clip_spatial_tensor_batch_passthrough(
+            self,
+            batch: ClipSpatialTensorBatch,
+    ) -> ClipSpatialTensorBatch:
+        return batch
+
+
+    def clip_spatial_tensor_batch_to_spatial_float_vector_batch(
+            self,
+            batch: ClipSpatialTensorBatch,
+    ) -> SpatialFloatVectorBatch:
+        return SpatialFloatVectorBatch(
+            SpatialVectorBatchData(
+                vectors={
+                    flat_index: [
+                        float(value)
+                        for value in vector.detach().cpu().tolist()
+                    ]
+                    for flat_index, vector in batch.ordered_items()
+                },
+                layout=batch.layout,
+                item_keys=batch.item_keys,
+                regions=batch.regions,
+            )
+        )

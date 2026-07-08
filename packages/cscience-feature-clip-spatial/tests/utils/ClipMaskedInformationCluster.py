@@ -8,7 +8,7 @@ from .OpenClipScoringService import OpenClipScoringService
 from cscience.features.clip_spatial.clip_spatial_feature.Geometry.SquareProvider import SquareProvider
 from cscience.features.clip_spatial.clip_spatial_feature.Filter.ZeroProvider import ZeroProvider
 from cscience.features.clip_spatial.clip_spatial_feature.Masking.MaskingMode import  MaskingMode
-from .visualization_util import taget_point_hard, taget_point_soft
+from util.visualization_util import taget_point_hard, taget_point_soft
 
 class ClipMaskedInformationCluster:
 

@@ -14,6 +14,7 @@ dependencies = [
 
     "open-clip-torch>=3.3,<4",
     "transformers>=5.13,<6",
+    "icontract>=2.7.3",
 ]
 
 [tool.uv.sources]
@@ -49,4 +50,4 @@ only-include = [
 ]
 
 [project.entry-points."cscience.features"]
-clip = "cscience.features.clip:register"
+clip_spatial = "cscience.features.clip_spatial:register"
