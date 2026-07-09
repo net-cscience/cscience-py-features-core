@@ -8,6 +8,7 @@
             <path value="file://$PROJECT_DIR$/packages/cscience-feature-clip/resources" />
             <path value="file://$PROJECT_DIR$/packages/cscience-feature-api/resources" />
             <path value="file://$PROJECT_DIR$/packages/cscience-feature-clip-spatial/resources" />
+            <path value="file://$PROJECT_DIR$/resources" />
           </resourceRoots>
         </entryData>
       </entry>

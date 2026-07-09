@@ -9,6 +9,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-nsfw-image.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-nsfw-image.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-ocr-tesseract.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-ocr-tesseract.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-py-features-core.iml" filepath="$PROJECT_DIR$/.idea/cscience-py-features-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/project-maintenance.iml" filepath="$PROJECT_DIR$/.idea/project-maintenance.iml" />
     </modules>
   </component>
 </project>

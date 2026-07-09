@@ -10,6 +10,7 @@ dependencies = [
     "cscience-feature-asr-whisper",
     "cscience-feature-nsfw-image",
     "cscience-feature-ocr-tesseract",
+
     "numpy>=2.4.6",
     "torch>=2.11.0",
     "icontract>=2.7.3",
@@ -26,18 +27,26 @@ cscience-feature-clip-spatial = { workspace = true }
 cscience-feature-nsfw-image = { workspace = true }
 cscience-feature-ocr-tesseract = { workspace = true }
 
+project-maintenance = { workspace = true }
+
+
 [tool.uv.workspace]
 members = [
+
     "packages/cscience-feature-api",
     "packages/cscience-feature-asr-whisper",
     "packages/cscience-feature-clip",
     "packages/cscience-feature-clip-spatial",
     "packages/cscience-feature-nsfw-image",
     "packages/cscience-feature-ocr-tesseract",
+
+    "project-maintenance",
 ]
 
 [dependency-groups]
 dev = [
+    "project-maintenance",
+
     "pytest>=8.0",
     "pytest-cov>=6.0",
     "ruff>=0.8",

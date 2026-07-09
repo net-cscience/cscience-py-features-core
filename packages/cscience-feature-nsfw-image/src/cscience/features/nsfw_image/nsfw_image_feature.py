@@ -29,6 +29,9 @@ class NsfwImageFeature(FeatureBase):
 
         self._initialized = True
 
+
+
+
     @classmethod
     @torch.inference_mode()
     def classify_batch(cls, images: PilImageBatch) -> NsfwPredictionBatch:
