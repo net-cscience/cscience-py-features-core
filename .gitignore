@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+packages/cscience-feature-clip-spatial/tests/fixtures/images-out/
+
+packages/cscience-feature-clip-spatial/tests/fixtures/images-gen/

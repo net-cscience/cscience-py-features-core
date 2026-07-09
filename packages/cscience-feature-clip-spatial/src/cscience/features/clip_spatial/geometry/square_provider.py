@@ -4,7 +4,9 @@ from .geometry_provider import GeometryProvider
 
 
 class SquareProvider(GeometryProvider):
-    """Square or rectangular region provider based on relative window size."""
+    """Square or rectangular region provider based on relative window size.
+    geometry_size: tuple[float, float] - relative size of the region (height, width) in relation to the image dimensions.
+    """
 
     def __init__(self, geometry_size: tuple[float, float]) -> None:
         self.geometry_size = geometry_size

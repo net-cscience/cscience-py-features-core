@@ -9,7 +9,12 @@ from ..geometry.geometry_provider import GeometryProvider
 
 
 class SpatialIndexer:
-    """Creates spatial regions and maps local indices to flat batch indices."""
+    """Creates spatial regions and maps local indices to flat batch indices.
+    grid_shape: tuple[int, int] - number of rows (height) and columns (width) in the grid.
+    start_point: tuple[float, float] - normalized starting point y (row), x (column) for the first region in the grid.
+    step_size: tuple[float, float] - normalized step size y (row), x (column) for moving to the next region in the grid.
+    geometry: GeometryProvider - provider for creating spatial regions based on the grid and image dimensions.
+    """
 
     def __init__(
         self,

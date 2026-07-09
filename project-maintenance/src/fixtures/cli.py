@@ -6,9 +6,15 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from .image_fixtures import ImageFixtureBuilder, ImageFixtureConfig
+from .image_fixtures import (
+    DEFAULT_DOWNLOAD_USER_AGENT,
+    ErrorMode,
+    ImageFixtureBuilder,
+    ImageFixtureConfig,
+    SmallImageMode,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,20 +49,39 @@ class BuildImageFixturesCommand:
     workspace_root: Path
     output_format: str
     jpeg_quality: int
-    small_image_mode: str
+    small_image_mode: SmallImageMode
     package_filter: str | None
     output_dir: Path | None
+
+    error_mode: ErrorMode
+    download_cache_dir: Path | None
+    request_timeout_seconds: float
+    request_delay_seconds: float
+    download_retries: int
+    max_retry_after_seconds: float
+    user_agent: str
 
     def run(self) -> None:
         ImageFixtureBuilder(
             ImageFixtureConfig(
                 sources_csv=self.sources_csv.expanduser(),
                 workspace_root=self.workspace_root.expanduser(),
-                output_format=self.output_format,
+                output_format=cast(Any, self.output_format),
                 jpeg_quality=self.jpeg_quality,
                 small_image_mode=self.small_image_mode,
                 package_filter=self.package_filter,
                 output_dir=self.output_dir.expanduser() if self.output_dir else None,
+                error_mode=self.error_mode,
+                download_cache_dir=(
+                    self.download_cache_dir.expanduser()
+                    if self.download_cache_dir is not None
+                    else None
+                ),
+                request_timeout_seconds=self.request_timeout_seconds,
+                request_delay_seconds=self.request_delay_seconds,
+                download_retries=self.download_retries,
+                max_retry_after_seconds=self.max_retry_after_seconds,
+                user_agent=self.user_agent,
             )
         ).run()
 
@@ -73,6 +98,42 @@ def parse_jpeg_quality(value: str) -> int:
     return quality
 
 
+def parse_positive_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("Value must be a number.") from error
+
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("Value must be greater than 0.")
+
+    return parsed
+
+
+def parse_non_negative_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("Value must be a number.") from error
+
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("Value must be non-negative.")
+
+    return parsed
+
+
+def parse_non_negative_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("Value must be an integer.") from error
+
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("Value must be non-negative.")
+
+    return parsed
+
+
 def run_to_base64(args: argparse.Namespace) -> None:
     Base64FixtureCommand(
         image_path=args.image,
@@ -86,9 +147,16 @@ def run_build_image_fixtures(args: argparse.Namespace) -> None:
         workspace_root=args.workspace_root,
         output_format=args.format,
         jpeg_quality=args.jpeg_quality,
-        small_image_mode=args.on_small,
+        small_image_mode=cast(SmallImageMode, args.on_small),
         package_filter=args.package,
         output_dir=args.out_dir,
+        error_mode=cast(ErrorMode, args.on_error),
+        download_cache_dir=args.download_cache_dir,
+        request_timeout_seconds=args.request_timeout,
+        request_delay_seconds=args.request_delay,
+        download_retries=args.download_retries,
+        max_retry_after_seconds=args.max_retry_after,
+        user_agent=args.user_agent,
     ).run()
 
 
@@ -189,6 +257,67 @@ def add_build_image_fixtures_parser(subparsers: Any) -> None:
         choices=["error", "skip", "upscale"],
         default="error",
         help="What to do if the source crop is smaller than a requested output.",
+    )
+
+    parser.add_argument(
+        "--on-error",
+        choices=["fail-fast", "collect", "ignore"],
+        default="fail-fast",
+        help=(
+            "How row failures are handled. 'fail-fast' aborts immediately, "
+            "'collect' processes all rows and fails at the end, and 'ignore' "
+            "processes all rows and returns success."
+        ),
+    )
+
+    parser.add_argument(
+        "--download-cache-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for cached URL downloads. Defaults to "
+            "<workspace-root>/.cache/fixture-images."
+        ),
+    )
+
+    parser.add_argument(
+        "--request-timeout",
+        type=parse_positive_float,
+        default=60.0,
+        help="HTTP request timeout in seconds.",
+    )
+
+    parser.add_argument(
+        "--request-delay",
+        type=parse_non_negative_float,
+        default=2.0,
+        help="Minimum delay between uncached downloads in seconds.",
+    )
+
+    parser.add_argument(
+        "--download-retries",
+        type=parse_non_negative_int,
+        default=6,
+        help="Number of retry attempts for transient download errors.",
+    )
+
+    parser.add_argument(
+        "--max-retry-after",
+        type=parse_positive_float,
+        default=300.0,
+        help=(
+            "Maximum Retry-After delay to wait automatically. If the server "
+            "requests a longer delay, the command fails instead."
+        ),
+    )
+
+    parser.add_argument(
+        "--user-agent",
+        default=DEFAULT_DOWNLOAD_USER_AGENT,
+        help=(
+            "HTTP User-Agent for downloads. For Wikimedia, use a descriptive "
+            "value with contact information."
+        ),
     )
 
     parser.set_defaults(handler=run_build_image_fixtures)

@@ -4,6 +4,8 @@
     <content url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial">
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial/tests/fixtures/images-gen" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-clip-spatial/tests/fixtures/images-out" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="cscience-feature-api" exported="" />

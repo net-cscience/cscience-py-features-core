@@ -1,23 +1,36 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
+import random
 import shutil
-import tempfile
+import socket
+import sys
+import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Literal
 from urllib.parse import urlparse
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 
 SourceType = Literal["local", "url"]
 SmallImageMode = Literal["error", "skip", "upscale"]
+ErrorMode = Literal["fail-fast", "collect", "ignore"]
 
+DEFAULT_DOWNLOAD_USER_AGENT = (
+    "CScienceFixtureBuilder/0.1 "
+    "(https://github.com/CHANGE_ME/CHANGE_ME; mailto:CHANGE_ME)"
+)
 
 _TRUE_VALUES = {"1", "true", "yes", "y", "x"}
+_TRANSIENT_HTTP_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,12 +41,22 @@ class Resolution:
     @classmethod
     def parse(cls, value: str) -> "Resolution":
         normalized = value.strip().lower().replace("×", "x")
-        parts = normalized.split("x")
+        normalized = normalized.split("(", maxsplit=1)[0].strip(" _\t")
+        parts = [part.strip(" _\t") for part in normalized.split("x")]
 
         if len(parts) != 2:
             raise ValueError(f"Invalid resolution column: {value}")
 
-        return cls(width=int(parts[0]), height=int(parts[1]))
+        try:
+            width = int(parts[0])
+            height = int(parts[1])
+        except ValueError as error:
+            raise ValueError(f"Invalid resolution column: {value}") from error
+
+        if width <= 0 or height <= 0:
+            raise ValueError(f"Resolution must be positive: {value}")
+
+        return cls(width=width, height=height)
 
     @property
     def filename(self) -> str:
@@ -79,10 +102,12 @@ class ImageFixtureRow:
 
     @classmethod
     def from_csv_row(cls, row: dict[str, str]) -> "ImageFixtureRow":
-        identifier = _require(row, "id")
-        package = _require(row, "package")
-        source_type = _require(row, "source_type")
-        source = _require(row, "source")
+        normalized_row = _normalize_row(row)
+
+        identifier = _require(normalized_row, "id")
+        package = _require(normalized_row, "package")
+        source_type = _require(normalized_row, "source_type")
+        source = _require(normalized_row, "source")
 
         if source_type not in {"local", "url"}:
             raise ValueError(
@@ -90,7 +115,7 @@ class ImageFixtureRow:
                 f"Got: {source_type}"
             )
 
-        resolutions = _selected_resolutions(row)
+        resolutions = _selected_resolutions(normalized_row)
 
         if not resolutions:
             raise ValueError(f"No output resolutions selected for row {identifier}")
@@ -101,13 +126,13 @@ class ImageFixtureRow:
             source_type=source_type,  # type: ignore[arg-type]
             source=source,
             resolutions=resolutions,
-            anchor_x=float(row.get("anchor_x") or 0.5),
-            anchor_y=float(row.get("anchor_y") or 0.5),
-            license=row.get("license", ""),
-            author=row.get("author", ""),
-            landing_url=row.get("landing_url", ""),
-            classes=row.get("classes", ""),
-            notes=row.get("notes", ""),
+            anchor_x=_parse_anchor(normalized_row, "anchor_x", identifier),
+            anchor_y=_parse_anchor(normalized_row, "anchor_y", identifier),
+            license=normalized_row.get("license", ""),
+            author=normalized_row.get("author", ""),
+            landing_url=normalized_row.get("landing_url", ""),
+            classes=normalized_row.get("classes", ""),
+            notes=normalized_row.get("notes", ""),
         )
 
 
@@ -121,11 +146,20 @@ class ImageFixtureConfig:
     package_filter: str | None = None
     output_dir: Path | None = None
 
+    error_mode: ErrorMode = "fail-fast"
+    download_cache_dir: Path | None = None
+    request_timeout_seconds: float = 60.0
+    request_delay_seconds: float = 1.0
+    download_retries: int = 5
+    max_retry_after_seconds: float = 300.0
+    user_agent: str = DEFAULT_DOWNLOAD_USER_AGENT
+
 
 @dataclass(slots=True)
 class ImageFixtureBuilder:
     config: ImageFixtureConfig
     _temporary_files: list[Path] = field(default_factory=list)
+    _last_download_at: float | None = None
 
     def run(self) -> None:
         rows = self._read_rows()
@@ -141,10 +175,35 @@ class ImageFixtureBuilder:
             print("No fixture rows selected.")
             return
 
+        failures: list[str] = []
+
         try:
             for row in rows:
                 print(f"Building fixtures for {row.package}/{row.identifier}...")
-                self._build_row(row)
+
+                try:
+                    self._build_row(row)
+                except Exception as error:
+                    message = f"{row.package}/{row.identifier}: {error}"
+                    failures.append(message)
+
+                    if self.config.error_mode == "fail-fast":
+                        raise
+
+                    print(f"[ERROR] {message}", file=sys.stderr)
+
+            if failures:
+                print("", file=sys.stderr)
+                print("Fixture build finished with errors:", file=sys.stderr)
+
+                for failure in failures:
+                    print(f"  - {failure}", file=sys.stderr)
+
+                if self.config.error_mode == "collect":
+                    raise RuntimeError(
+                        f"Fixture build failed for {len(failures)} row(s). "
+                        "See the error summary above."
+                    )
         finally:
             self._cleanup_temporary_files()
 
@@ -212,7 +271,7 @@ class ImageFixtureBuilder:
                         case "skip":
                             print(
                                 f"Skipping {row.identifier}/{resolution.filename}: "
-                                "source crop too small."
+                                f"crop size is {crop.width}x{crop.height}."
                             )
                             continue
                         case "upscale":
@@ -240,7 +299,7 @@ class ImageFixtureBuilder:
                     }
                 )
 
-            metadata["outputs"][aspect_name] = {
+            metadata["outputs"][aspect_name] = {  # type: ignore[index]
                 "crop_box": {
                     "left": crop_box[0],
                     "top": crop_box[1],
@@ -296,29 +355,206 @@ class ImageFixtureBuilder:
                         f"Source image does not exist for {row.identifier}: {source_path}"
                     )
 
+                if not source_path.is_file():
+                    raise ValueError(
+                        f"Source path is not a file for {row.identifier}: {source_path}"
+                    )
+
                 return source_path.resolve()
             case _:
                 raise ValueError(f"Unsupported source type: {row.source_type}")
 
     def _download_source(self, url: str) -> Path:
+        cache_path = self._download_cache_path(url)
+
+        if self._cached_download_is_usable(cache_path):
+            return cache_path
+
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = cache_path.with_name(f"{cache_path.name}.part")
+
+        last_error: Exception | None = None
+        sleep_before_attempt = 0.0
+        max_attempts = self.config.download_retries + 1
+
+        for attempt in range(max_attempts):
+            if sleep_before_attempt > 0:
+                time.sleep(sleep_before_attempt)
+
+            self._throttle_downloads()
+
+            request = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": self.config.user_agent,
+                    "Accept": "image/*,*/*;q=0.8",
+                },
+            )
+
+            try:
+                with urllib.request.urlopen(
+                    request,
+                    timeout=self.config.request_timeout_seconds,
+                ) as response:
+                    content_type = response.headers.get("Content-Type", "")
+                    self._validate_content_type(content_type, url)
+
+                    with temp_path.open("wb") as output:
+                        shutil.copyfileobj(response, output)
+
+                if temp_path.stat().st_size == 0:
+                    raise ValueError(f"Downloaded image is empty: {url}")
+
+                temp_path.replace(cache_path)
+                return cache_path
+
+            except urllib.error.HTTPError as error:
+                last_error = error
+                temp_path.unlink(missing_ok=True)
+
+                if (
+                    error.code not in _TRANSIENT_HTTP_STATUS_CODES
+                    or attempt == max_attempts - 1
+                ):
+                    raise RuntimeError(
+                        f"HTTP {error.code} while downloading fixture image: {url}"
+                    ) from error
+
+                retry_after = None
+                if error.code == 429:
+                    retry_after = _parse_retry_after(error.headers.get("Retry-After"))
+
+                sleep_before_attempt = self._retry_delay_seconds(
+                    attempt=attempt + 1,
+                    retry_after=retry_after,
+                )
+
+                print(
+                    f"Transient HTTP {error.code} while downloading fixture image. "
+                    f"Retrying in {sleep_before_attempt:.1f}s "
+                    f"({attempt + 1}/{self.config.download_retries}): {url}",
+                    file=sys.stderr,
+                )
+
+            except (
+                urllib.error.URLError,
+                TimeoutError,
+                socket.timeout,
+                ValueError,
+            ) as error:
+                last_error = error
+                temp_path.unlink(missing_ok=True)
+
+                if attempt == max_attempts - 1:
+                    break
+
+                sleep_before_attempt = self._retry_delay_seconds(
+                    attempt=attempt + 1,
+                    retry_after=None,
+                )
+
+                print(
+                    f"Download failed. Retrying in {sleep_before_attempt:.1f}s "
+                    f"({attempt + 1}/{self.config.download_retries}): {url}. "
+                    f"Reason: {error}",
+                    file=sys.stderr,
+                )
+
+        raise RuntimeError(
+            f"Failed to download fixture image after {max_attempts} attempt(s): {url}"
+        ) from last_error
+
+    def _download_cache_path(self, url: str) -> Path:
+        cache_root = self.config.download_cache_dir
+
+        if cache_root is None:
+            cache_root = self.config.workspace_root / ".cache" / "fixture-images"
+
         parsed = urlparse(url)
-        suffix = Path(parsed.path).suffix or ".jpg"
+        suffix = Path(parsed.path).suffix.lower()
 
-        handle = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        temp_path = Path(handle.name)
-        handle.close()
+        if not suffix or len(suffix) > 10:
+            suffix = ".img"
 
-        request = urllib.request.Request(
-            url,
-            headers={"User-Agent": "cscience-project-maintenance/0.1"},
+        digest = hashlib.sha256(url.encode("utf-8")).hexdigest()[:24]
+
+        return cache_root.expanduser() / f"{digest}{suffix}"
+
+    @staticmethod
+    def _validate_content_type(content_type: str, url: str) -> None:
+        if not content_type:
+            return
+
+        media_type = content_type.split(";", maxsplit=1)[0].strip().lower()
+
+        if media_type.startswith("image/"):
+            return
+
+        if media_type in {"application/octet-stream", "binary/octet-stream"}:
+            return
+
+        raise ValueError(
+            f"URL did not return an image. Content-Type was {content_type!r}: {url}"
         )
 
-        with urllib.request.urlopen(request, timeout=60) as response:
-            with temp_path.open("wb") as output:
-                shutil.copyfileobj(response, output)
+    @staticmethod
+    def _cached_download_is_usable(path: Path) -> bool:
+        if not path.exists():
+            return False
 
-        self._temporary_files.append(temp_path)
-        return temp_path
+        if path.stat().st_size == 0:
+            path.unlink(missing_ok=True)
+            return False
+
+        try:
+            with Image.open(path) as image:
+                image.verify()
+        except (OSError, UnidentifiedImageError):
+            print(f"Ignoring invalid cached fixture download: {path}", file=sys.stderr)
+            path.unlink(missing_ok=True)
+            return False
+
+        return True
+
+    def _throttle_downloads(self) -> None:
+        delay = self.config.request_delay_seconds
+
+        if delay <= 0:
+            return
+
+        now = time.monotonic()
+
+        if self._last_download_at is not None:
+            elapsed = now - self._last_download_at
+            remaining = delay - elapsed
+
+            if remaining > 0:
+                time.sleep(remaining)
+
+        self._last_download_at = time.monotonic()
+
+    def _retry_delay_seconds(
+        self,
+        *,
+        attempt: int,
+        retry_after: float | None,
+    ) -> float:
+        if retry_after is not None:
+            if retry_after > self.config.max_retry_after_seconds:
+                raise RuntimeError(
+                    f"Server requested Retry-After={retry_after:.0f}s, "
+                    f"which is above the configured maximum of "
+                    f"{self.config.max_retry_after_seconds:.0f}s. "
+                    "Run the command later or increase --max-retry-after."
+                )
+
+            return retry_after
+
+        base = max(self.config.request_delay_seconds, 1.0)
+        exponential = base * (2 ** max(attempt - 1, 0))
+        jitter = random.uniform(0.0, min(1.0, exponential * 0.25))
+
+        return min(exponential + jitter, self.config.max_retry_after_seconds)
 
     def _read_rows(self) -> list[ImageFixtureRow]:
         if not self.config.sources_csv.exists():
@@ -326,9 +562,24 @@ class ImageFixtureBuilder:
                 f"Fixture CSV does not exist: {self.config.sources_csv}"
             )
 
-        with self.config.sources_csv.open("r", encoding="utf-8", newline="") as handle:
+        rows: list[ImageFixtureRow] = []
+
+        with self.config.sources_csv.open("r", encoding="utf-8-sig", newline="") as handle:
             reader = csv.DictReader(handle)
-            return [ImageFixtureRow.from_csv_row(row) for row in reader]
+
+            if reader.fieldnames is None:
+                raise ValueError(f"Fixture CSV has no header: {self.config.sources_csv}")
+
+            for row_number, row in enumerate(reader, start=2):
+                try:
+                    rows.append(ImageFixtureRow.from_csv_row(row))
+                except Exception as error:
+                    raise ValueError(
+                        f"Invalid fixture CSV row {row_number} in "
+                        f"{self.config.sources_csv}: {error}"
+                    ) from error
+
+        return rows
 
     def _save_image(self, image: Image.Image, output_file: Path) -> None:
         match self.config.output_format:
@@ -396,6 +647,44 @@ class ImageFixtureBuilder:
             file.unlink(missing_ok=True)
 
 
+def _parse_retry_after(value: str | None) -> float | None:
+    if not value:
+        return None
+
+    try:
+        return max(float(value), 0.0)
+    except ValueError:
+        pass
+
+    try:
+        retry_time = parsedate_to_datetime(value)
+    except (TypeError, ValueError):
+        return None
+
+    if retry_time.tzinfo is None:
+        retry_time = retry_time.replace(tzinfo=timezone.utc)
+
+    return max((retry_time - datetime.now(timezone.utc)).total_seconds(), 0.0)
+
+
+def _normalize_row(row: dict[str, str]) -> dict[str, str]:
+    return {
+        _normalize_column_name(key): (value or "").strip()
+        for key, value in row.items()
+        if key is not None
+    }
+
+
+def _normalize_column_name(value: str) -> str:
+    return (
+        value.strip()
+        .lower()
+        .replace(" ", "_")
+        .replace("-", "_")
+        .replace("×", "x")
+    )
+
+
 def _require(row: dict[str, str], key: str) -> str:
     value = row.get(key, "").strip()
 
@@ -403,6 +692,23 @@ def _require(row: dict[str, str], key: str) -> str:
         raise ValueError(f"Missing required CSV column value: {key}")
 
     return value
+
+
+def _parse_anchor(row: dict[str, str], key: str, identifier: str) -> float:
+    value = row.get(key, "").strip()
+
+    if not value:
+        return 0.5
+
+    try:
+        anchor = float(value)
+    except ValueError as error:
+        raise ValueError(f"Invalid {key} for row {identifier}: {value}") from error
+
+    if not 0.0 <= anchor <= 1.0:
+        raise ValueError(f"{key} must be between 0.0 and 1.0 for row {identifier}")
+
+    return anchor
 
 
 def _selected_resolutions(row: dict[str, str]) -> tuple[Resolution, ...]:

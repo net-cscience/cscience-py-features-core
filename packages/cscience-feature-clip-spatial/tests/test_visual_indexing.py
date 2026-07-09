@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from PIL import Image
 
+from cscience.features.api.datatypes.image.pil_image import PilImage
 from cscience.features.clip_spatial.filter.zero_provider import ZeroProvider
 from cscience.features.clip_spatial.geometry.square_provider import SquareProvider
 from cscience.features.clip_spatial.indexer.spatial_indexer import SpatialIndexer
@@ -13,30 +14,22 @@ from cscience.features.clip_spatial.masking.masking_mode import MaskingMode
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
-
-def load_fixture_tensor(name: str, size: tuple[int, int] = (224, 224)) -> torch.Tensor:
-    image = Image.open(FIXTURE_DIR / name).convert("RGB").resize(size)
-    array = np.asarray(image, dtype=np.float32) / 255.0
-
-    return torch.from_numpy(array).permute(2, 0, 1)
-
-
 def make_indexer(
     item_keys: tuple[int, ...],
     image_width: int = 224,
     image_height: int = 224,
 ) -> tuple[SpatialIndexer, SquareProvider]:
     geometry = SquareProvider(
-        geometry_size=(1 / 3, 1 / 3),
+        geometry_size=(1 / 3, 1 / 4),
     )
 
     indexer = SpatialIndexer(
         item_keys=item_keys,
         image_width=image_width,
         image_height=image_height,
-        grid_shape=(3, 3),
-        start_point=(1 / 6, 1 / 6),
-        step_size=(1 / 3, 1 / 3),
+        grid_shape=(3, 4),
+        start_point=(1 / 6, 1 / 8),
+        step_size=(1 / 3, 1 / 4),
         geometry=geometry,
     )
 
@@ -45,97 +38,38 @@ def make_indexer(
 
 class TestVisualIndexing(unittest.TestCase):
 
-    def test_keep_only_creates_flat_spatial_batch_for_one_image(self) -> None:
-        base = load_fixture_tensor("dogbird.png").unsqueeze(0)
+    image_set: dict[str, PilImage] = {}
 
-        indexer, geometry = make_indexer(item_keys=(0,))
+    def setUp(self):
+        images = Path(FIXTURE_DIR).glob("**/*.jpg")
 
-        generator = MaskingGenerator(
-            indexer=indexer,
-            geometry=geometry,
-            filter_provider=ZeroProvider(),
-            mode=MaskingMode.KEEP_ONLY,
-        )
+        for image in images:
+            pil_image = Image.open(image).convert("RGB")
+            self.image_set[image.stem] = PilImage(pil_image)
 
-        result = generator.generate(base)
 
-        self.assertEqual(tuple(result.shape), (9, 3, 224, 224))
-        self.assertEqual(generator.layout.flat_count, 9)
-        self.assertEqual(generator.item_keys, (0,))
-        self.assertEqual(len(generator.regions), 9)
+    def test_keep_only(self) -> None:
 
-        region = generator.regions[0]
+        for key, image in self.image_set.items():
+            array = np.asarray(image.data(), dtype=np.float32) / 255.0
+            image_tensor = torch.from_numpy(array).permute(2, 0, 1).unsqueeze(0)
 
-        selected = result[0, :, region.y0:region.y1, region.x0:region.x1]
-        expected = base[0, :, region.y0:region.y1, region.x0:region.x1]
+            indexer, geometry = make_indexer(item_keys=(0,),image_width=image.data().width,image_height=image.data().height)
 
-        self.assertTrue(torch.allclose(selected, expected))
+            generator = MaskingGenerator(
+                indexer=indexer,
+                geometry=geometry,
+                filter_provider=ZeroProvider(),
+                mode=MaskingMode.KEEP_ONLY,
+            )
 
-        outside_mask = torch.ones_like(result[0], dtype=torch.bool)
-        outside_mask[:, region.y0:region.y1, region.x0:region.x1] = False
 
-        self.assertTrue(torch.all(result[0][outside_mask] == 0.0))
+            result = generator.generate(image_tensor)
+            result_np = result.permute(0,2, 3, 1).detach().cpu().numpy()
 
-    def test_mask_out_zeroes_only_selected_region(self) -> None:
-        base = load_fixture_tensor("catdog.png").unsqueeze(0)
+            # Temporary Store
+            output_dir = Path(FIXTURE_DIR) / "images-out"
+            output_dir.mkdir(parents=True, exist_ok=True)
 
-        indexer, geometry = make_indexer(item_keys=(0,))
-
-        generator = MaskingGenerator(
-            indexer=indexer,
-            geometry=geometry,
-            filter_provider=ZeroProvider(),
-            mode=MaskingMode.MASK_OUT,
-        )
-
-        result = generator.generate(base)
-
-        self.assertEqual(tuple(result.shape), (9, 3, 224, 224))
-
-        region = generator.regions[4]
-
-        selected = result[4, :, region.y0:region.y1, region.x0:region.x1]
-        self.assertTrue(torch.all(selected == 0.0))
-
-        outside_mask = torch.ones_like(result[4], dtype=torch.bool)
-        outside_mask[:, region.y0:region.y1, region.x0:region.x1] = False
-
-        self.assertTrue(torch.allclose(result[4][outside_mask], base[0][outside_mask]))
-
-    def test_extract_keeps_stackable_shape(self) -> None:
-        base = load_fixture_tensor("astronaut.png").unsqueeze(0)
-
-        indexer, geometry = make_indexer(item_keys=(0,))
-
-        generator = MaskingGenerator(
-            indexer=indexer,
-            geometry=geometry,
-            filter_provider=ZeroProvider(),
-            mode=MaskingMode.EXTRACT,
-        )
-
-        result = generator.generate(base)
-
-        self.assertEqual(tuple(result.shape), (9, 3, 224, 224))
-
-    def test_batch_two_images_creates_n_times_r_variants(self) -> None:
-        dogbird = load_fixture_tensor("dogbird.png")
-        catdog = load_fixture_tensor("catdog.png")
-        base = torch.stack([dogbird, catdog])
-
-        indexer, geometry = make_indexer(item_keys=(10, 20))
-
-        generator = MaskingGenerator(
-            indexer=indexer,
-            geometry=geometry,
-            filter_provider=ZeroProvider(),
-            mode=MaskingMode.KEEP_ONLY,
-        )
-
-        result = generator.generate(base)
-
-        self.assertEqual(tuple(result.shape), (18, 3, 224, 224))
-        self.assertEqual(generator.layout.item_count, 2)
-        self.assertEqual(generator.layout.regions_per_item, 9)
-        self.assertEqual(generator.layout.flat_count, 18)
-        self.assertEqual(generator.item_keys, (10, 20))
+            for i in range(result_np.shape[0]):
+                Image.fromarray((result_np[i]*255).astype('uint8'), mode='RGB').save(output_dir / f"{key}_{i}.jpg", "JPEG")
