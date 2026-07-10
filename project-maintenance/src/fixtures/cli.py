@@ -135,9 +135,13 @@ def parse_non_negative_int(value: str) -> int:
 
 
 def run_to_base64(args: argparse.Namespace) -> None:
+    out_path:Path = args.out
+    if out_path is None:
+        out_path = args.image.with_suffix(".txt")
+
     Base64FixtureCommand(
         image_path=args.image,
-        output_path=args.out,
+        output_path=out_path,
     ).run()
 
 

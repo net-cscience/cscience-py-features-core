@@ -12,6 +12,13 @@
           </resourceRoots>
         </entryData>
       </entry>
+      <entry url="file://$PROJECT_DIR$/packages/cscience-feature-api">
+        <entryData>
+          <resourceRoots>
+            <path value="file://$PROJECT_DIR$/packages/cscience-feature-api/tests/fixtures" />
+          </resourceRoots>
+        </entryData>
+      </entry>
       <entry url="file://$PROJECT_DIR$/packages/cscience-feature-asr-whisper">
         <entryData>
           <resourceRoots>

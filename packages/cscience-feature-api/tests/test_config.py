@@ -1,10 +1,12 @@
 import unittest
+from pathlib import Path
 from typing import Literal
 
 from numpy import random
 from pydantic import Field
 
 from cscience.features.api.config.config_base import ConfigBase
+from cscience.features.api.config.config_mode import ConfigMode
 
 
 class MockConfig(ConfigBase):
@@ -54,6 +56,47 @@ class MockConfig(ConfigBase):
         def _namespace(cls):
             return "mock"
 
+
+class FooConfig(ConfigBase):
+    string_value: str = Field(
+        default="What does foo actuali means?",
+        title='A string value',
+        description='This is a string value for testing purposes.',
+        min_length=3,
+        max_length=50,
+    )
+    int_value: int = Field(
+        default=1,
+        title='An integer value',
+        description='This is an integer value for testing purposes.',
+        ge=0,
+        le=100
+    )
+
+    @classmethod
+    def _namespace(cls):
+        return "foo"
+
+class BarConfig(ConfigBase):
+    string_value: str = Field(
+        default="What does bar actually means?",
+        title='A string value',
+        description='This is a string value for testing purposes.',
+        min_length=3,
+        max_length=50,
+    )
+    int_value: int = Field(
+        default=100,
+        title='An integer value',
+        description='This is an integer value for testing purposes.',
+        ge=0,
+        le=100
+    )
+
+    @classmethod
+    def _namespace(cls):
+        return "bar"
+
 class ConfigTest(unittest.TestCase):
 
     def test_read(self):
@@ -86,3 +129,45 @@ class ConfigTest(unittest.TestCase):
         cfg.literal_value = "test3"
         MockConfig.model_validate(cfg)
         pass
+
+
+    def test_persist_local(self):
+        ConfigBase.initialize(
+            mode=ConfigMode.CONFIG_PER_FEATURE,
+        )
+        foo = FooConfig()
+        bar = BarConfig()
+        foo.persist()
+        bar.persist()
+
+    def test_persist_per_feature_package(self):
+        ConfigBase.initialize(
+            mode=ConfigMode.CONFIG_PER_FEATURE,
+            config_path=Path("./fixtures/configurations.json"),
+        )
+        foo = FooConfig()
+        bar = BarConfig()
+        foo.persist()
+        bar.persist()
+
+
+
+    def test_persist_unified(self):
+        ConfigBase.initialize(
+            mode=ConfigMode.UNIFIED_CONFIG,
+            config_path=Path("./fixtures/configurations.json"),
+        )
+        foo = FooConfig()
+        bar = BarConfig()
+        foo.persist()
+        bar.persist()
+
+    def test_persist_per_feature_common_folder(self):
+        ConfigBase.initialize(
+            mode=ConfigMode.CONFIG_PER_FEATURE,
+            config_path=Path("./fixtures/config/"),
+        )
+        foo = FooConfig()
+        bar = BarConfig()
+        foo.persist()
+        bar.persist()

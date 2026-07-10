@@ -1,0 +1,71 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "string_value": {
+      "default": "Hello World!",
+      "description": "This is a string value for testing purposes.",
+      "maxLength": 50,
+      "minLength": 3,
+      "title": "A string value",
+      "type": "string"
+    },
+    "int_value": {
+      "default": 42,
+      "description": "This is an integer value for testing purposes.",
+      "maximum": 100,
+      "minimum": 0,
+      "title": "An integer value",
+      "type": "integer"
+    },
+    "bool_value": {
+      "default": false,
+      "description": "This is a boolean value for testing purposes.",
+      "title": "A boolean value",
+      "type": "boolean"
+    },
+    "float_value": {
+      "default": 3.14,
+      "description": "This is a float value for testing purposes.",
+      "maximum": 10,
+      "minimum": 0,
+      "title": "A float value",
+      "type": "number"
+    },
+    "list_value": {
+      "default": [
+        1,
+        2,
+        3
+      ],
+      "description": "This is a list value for testing purposes.",
+      "items": {
+        "type": "integer"
+      },
+      "title": "A list value",
+      "type": "array"
+    },
+    "dict_value": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {
+        "key": "value"
+      },
+      "description": "This is a dict value for testing purposes.",
+      "title": "A dict value",
+      "type": "object"
+    },
+    "literal_value": {
+      "default": "test1",
+      "description": "This is a literal value for testing purposes.",
+      "enum": [
+        "test1",
+        "test2"
+      ],
+      "title": "A literal value",
+      "type": "string"
+    }
+  },
+  "title": "MockConfig",
+  "type": "object"
+}

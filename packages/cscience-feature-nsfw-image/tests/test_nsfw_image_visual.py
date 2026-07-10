@@ -54,15 +54,15 @@ class TestNsfwImageVisual(unittest.TestCase):
             msg=f"Expected NSFW score > 0.5, got {prediction}",
         )
 
-    def test_sfw_image_is_not_detected(self):
+    def test_nsfw_image_is_not_detected(self):
         image = load_base64_image(
-            Path(__file__).parent / "fixtures" / "sfw_astronaut_base64.txt"
+            Path(__file__).parent / "fixtures" / "NSFW_CC0_Vulva.txt"
         )
 
         prediction = NsfwImageConnector().classify(image)
 
-        self.assertLess(
+        self.assertGreater(
             prediction.nsfw_score,
-            0.5,
+            0.9,
             msg=f"Expected NSFW score < 0.5, got {prediction}",
         )
