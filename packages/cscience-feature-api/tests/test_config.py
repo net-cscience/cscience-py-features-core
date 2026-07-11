@@ -53,7 +53,7 @@ class MockConfig(ConfigBase):
         )
 
         @classmethod
-        def _namespace(cls):
+        def namespace(cls):
             return "mock"
 
 
@@ -74,7 +74,7 @@ class FooConfig(ConfigBase):
     )
 
     @classmethod
-    def _namespace(cls):
+    def namespace(cls):
         return "foo"
 
 class BarConfig(ConfigBase):
@@ -94,7 +94,7 @@ class BarConfig(ConfigBase):
     )
 
     @classmethod
-    def _namespace(cls):
+    def namespace(cls):
         return "bar"
 
 class ConfigTest(unittest.TestCase):

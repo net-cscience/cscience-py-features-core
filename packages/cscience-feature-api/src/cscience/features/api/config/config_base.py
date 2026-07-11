@@ -17,13 +17,66 @@ class ConfigBase(BaseModel, ABC):
     """
     Base class for validated and persistable feature configurations.
 
-    The configuration system must be initialized once through
-    `ConfigBase.initialize()` before configurations are loaded or persisted.
+    The configuration system must be initialized exactly once through
+    :meth:`ConfigBase.initialize` before any configuration is loaded or
+    persisted. The selected storage mode applies globally to all subclasses and
+    cannot be changed per configuration type or instance.
 
-    Configurations can be stored either:
+    Two storage modes are supported:
 
-    1. In one file per feature package.
-    2. In one unified JSON file, grouped by namespace.
+    `ConfigMode.UNIFIED_CONFIG`
+    All configurations are stored in a single JSON file. Each concrete
+    configuration occupies one top-level object identified by its namespace.
+
+    Example::
+
+        {
+            "api": {
+                "host": "localhost",
+                "port": 8080
+            },
+            "clip": {
+                "model_name": "ViT-B-32"
+            }
+        }
+
+    In this mode, ``config_path`` passed to :meth:`initialize` refers to the
+    unified JSON file. When omitted, ``configurations.json`` in the current
+    working directory is used.
+
+
+    `ConfigMode.CONFIG_PER_FEATURE`
+    Each configuration is stored in a separate JSON file named after its
+    namespace, for example `api.json` or `clip.json`.
+
+
+    When ``config_path`` is provided, it must refer to a directory in which
+    all configuration files are stored.
+
+    When ``config_path`` is omitted, each configuration is stored in the
+    ``resources/config`` directory of the package containing its concrete
+    configuration class.
+
+    Concrete subclasses must implement :meth:`_namespace` and return a unique,
+    filesystem-safe namespace. The namespace is used both as the top-level key in
+    a unified configuration and as the filename in per-feature mode.
+
+    :meth:`persist` serializes the complete validated model state and writes it
+    atomically. In unified mode, only the current namespace is replaced; all other
+    configuration sections are preserved.
+
+    :meth:`load` reads the applicable configuration, validates it using the
+    concrete Pydantic model, and replaces the current instance state in place.
+    The existing instance remains unchanged when parsing or validation fails.
+
+    Concrete configuration classes are registered automatically. During explicit
+    system initialization, JSON templates and schemas may be generated for all
+    registered configuration classes. These artifacts are written to the
+    `resources/config` directory of the package containing the concrete class.
+
+    Package roots are determined from the file defining the concrete
+    configuration class by searching upward for a directory containing
+    `pyproject.toml` and either `src` or `tests`.
     """
 
     model_config = ConfigDict(
@@ -309,7 +362,7 @@ class ConfigBase(BaseModel, ABC):
         """
         Return the configuration filename derived from the namespace.
         """
-        namespace = cls._namespace().strip()
+        namespace = cls.namespace().strip()
 
         if not namespace:
             raise ValueError(
@@ -328,7 +381,7 @@ class ConfigBase(BaseModel, ABC):
             )
 
         return f"{namespace}.json"
-    
+
     @classmethod
     def _package_root(cls) -> pathlib.Path:
         """
@@ -397,19 +450,19 @@ class ConfigBase(BaseModel, ABC):
     def _template_path(cls) -> pathlib.Path:
         return (
             cls._config_resources_directory()
-            / f"template_{cls._namespace()}.json"
+            / f"template_{cls.namespace()}.json"
         )
 
     @classmethod
     def _schema_path(cls) -> pathlib.Path:
         return (
             cls._config_resources_directory()
-            / f"schema_{cls._namespace()}.json"
+            / f"schema_{cls.namespace()}.json"
         )
 
     @classmethod
     @abstractmethod
-    def _namespace(cls) -> str:
+    def namespace(cls) -> str:
         """
         Return the unique namespace used in unified configuration files.
         """
@@ -456,7 +509,7 @@ class ConfigBase(BaseModel, ABC):
         """
         Replace only this config's section in the unified document.
         """
-        namespace = type(self)._namespace()
+        namespace = type(self).namespace()
 
         with ConfigBase._unified_config_lock:
             document = self._read_json_object(
@@ -507,7 +560,7 @@ class ConfigBase(BaseModel, ABC):
             missing_ok=False,
         )
 
-        namespace = type(self)._namespace()
+        namespace = type(self).namespace()
 
         if namespace not in document:
             raise KeyError(

@@ -11,7 +11,7 @@ class ClipSpatialConfig(ConfigBase):
     """Configuration for CLIP Spatial."""
 
     @classmethod
-    def _namespace(cls) -> str:
+    def namespace(cls) -> str:
         return "clip_spatial"
 
     model_name: str = Field(default="xlm-roberta-base-ViT-B-32")

@@ -7,7 +7,7 @@ class ClipConfig(ConfigBase):
 
 
     @classmethod
-    def _namespace(cls):
+    def namespace(cls):
         return "clip"
 
     model_name:str = Field(
