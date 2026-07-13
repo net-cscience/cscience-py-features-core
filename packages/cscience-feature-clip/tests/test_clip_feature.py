@@ -5,6 +5,7 @@ import unittest
 from PIL import Image
 
 from cscience.features.api import measure_time
+from cscience.features.clip.clip_config import ClipConfig
 from cscience.features.clip.clip_connector import ClipConnector
 
 
@@ -39,6 +40,7 @@ class FeatureTest(unittest.TestCase):
 
     @measure_time(times=N, ignore_first=True)
     def test_clip_text_to_vector(self):
+
         clip = ClipConnector()
         v = clip.text("Hello World")
 

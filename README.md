@@ -255,3 +255,10 @@ uv run python -c "import torch; print(torch.__version__); print(torch.version.cu
 ```
 
 Use the timing decorator only for local benchmarking and development tests.
+
+### PyCharm Support
+
+When using PyCharm, install the **Pydantic** plugin to improve type inference and constructor completion for Pydantic models.
+
+Without the plugin, PyCharm may incorrectly report inherited custom constructor arguments such as `namespace`, `mode`, or `config_path` as unexpected, although the code runs correctly.
+
