@@ -5,7 +5,7 @@ import threading
 from typing import ClassVar, Generic, Self, TypeVar, cast
 
 from cscience.features.api.config.config_base import ConfigBase
-
+from cscience.features.api.feature.feature_info import FeatureInfo
 
 TConfig = TypeVar(
     "TConfig",
@@ -119,4 +119,10 @@ class FeatureBase(ABC, Generic[TFeature, TConfig]):
         self,
         config: TConfig,
     ) -> None:
+        raise NotImplementedError
+
+
+
+    @abstractmethod
+    def get_feature_info(self) -> FeatureInfo:
         raise NotImplementedError

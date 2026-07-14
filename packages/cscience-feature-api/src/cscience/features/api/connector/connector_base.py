@@ -27,6 +27,7 @@ class ConnectorBase(ABC):
     def get_feature_info(self) -> FeatureInfo:
         raise NotImplementedError
 
+    @classmethod
     @abstractmethod
-    def get_service_info(self) -> ServiceInfo:
+    def get_service_info(cls) -> ServiceInfo:
         raise NotImplementedError

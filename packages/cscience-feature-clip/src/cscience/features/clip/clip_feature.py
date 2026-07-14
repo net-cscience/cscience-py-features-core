@@ -6,9 +6,11 @@ import torch
 from cscience.features.api.datatypes.image.pil_image_batch import PilImageBatch
 from cscience.features.api.datatypes.text.text_batch import TextBatch
 from cscience.features.api.feature.feature_base import FeatureBase
+from cscience.features.api.feature.feature_base import FeatureInfo
 from .clip_config import ClipConfig
 
 from .clip_datatypes.clip_tensor_batch import ClipTensorBatch, ClipTensorBatchData
+
 
 
 class ClipFeature(FeatureBase['ClipFeature', ClipConfig]):
@@ -19,11 +21,11 @@ class ClipFeature(FeatureBase['ClipFeature', ClipConfig]):
         self._pretrained = config.pretrained
 
 
-        self.device = torch.device(config.preferred_device if torch.cuda.is_available() else "cpu")
-        if config.force_device and not (config.preferred_device == str(self.device)):
+        self._device = torch.device(config.preferred_device if torch.cuda.is_available() else "cpu")
+        if config.force_device and not (config.preferred_device == str(self._device)):
             raise RuntimeError(
                 f"Preferred device {config.preferred_device} is not available. "
-                f"Available device is {self.device}."
+                f"Available device is {self._device}."
             )
 
         self._model, _, self._preprocess = open_clip.create_model_and_transforms(
@@ -31,8 +33,8 @@ class ClipFeature(FeatureBase['ClipFeature', ClipConfig]):
             pretrained=self._pretrained,
         )
 
-        self._model = self._model.to(self.device).eval()
-        self.tokenizer = open_clip.get_tokenizer(self._model_name)
+        self._model = self._model.to(self._device).eval()
+        self._tokenizer = open_clip.get_tokenizer(self._model_name)
 
         self._initialized = True
 
@@ -44,7 +46,7 @@ class ClipFeature(FeatureBase['ClipFeature', ClipConfig]):
         keys = texts.ordered_keys()
         values = list(texts.ordered_values())
 
-        tokens = self.tokenizer(values).to(self.device)
+        tokens = self._tokenizer(values).to(self._device)
 
         feats = self._model.encode_text(tokens)
         feats = feats / feats.norm(dim=-1, keepdim=True)
@@ -68,7 +70,7 @@ class ClipFeature(FeatureBase['ClipFeature', ClipConfig]):
                 self._preprocess(image)
                 for image in values
             ]
-        ).to(self.device)
+        ).to(self._device)
 
         feats = self._model.encode_image(image_tensors)
         feats = feats / feats.norm(dim=-1, keepdim=True)
@@ -78,4 +80,13 @@ class ClipFeature(FeatureBase['ClipFeature', ClipConfig]):
                 keys=keys,
                 vectors=feats.detach().float().cpu(),
             )
+        )
+
+    def get_feature_info(self) -> FeatureInfo:
+        return FeatureInfo(
+            namespace=self._config.namespace,
+            feature_type=type(self).__name__,
+            model_name=self._config.model_name,
+            device=str(self._device),
+            configuration=self._config.model_dump(mode="json"),
         )

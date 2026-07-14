@@ -3,15 +3,18 @@ import torch
 
 from cscience.features.api.datatypes.image.pil_image_batch import PilImageBatch
 from cscience.features.api.feature.feature_base import FeatureBase
+from cscience.features.api.feature.feature_base import FeatureInfo
 from cscience.features.api.datatypes.spatial.spatial_vector_batch_data import SpatialVectorBatchData
 
 from .clip_spatial_config import ClipSpatialConfig
 from .clip_spatial_datatypes.clip_spatial_tensor_batch import ClipSpatialTensorBatch
+from .clip_spatial_datatypes.clip_spatial_text_tensor_batch import ClipSpatialTextTensorBatch
+from .clip_spatial_datatypes.clip_spatial_text_tensor_batch_data import ClipSpatialTextTensorBatchData
 from .filter.zero_provider import ZeroProvider
 from .indexer.spatial_indexer import SpatialIndexer
 from .geometry.square_provider import SquareProvider
 from .masking.masking_generator import MaskingGenerator
-
+from ..api.datatypes.text.text_batch import TextBatch
 
 
 class ClipSpatialFeature(FeatureBase['ClipSpatialFeature', ClipSpatialConfig]):
@@ -34,6 +37,25 @@ class ClipSpatialFeature(FeatureBase['ClipSpatialFeature', ClipSpatialConfig]):
         self.tokenizer = open_clip.get_tokenizer(self._config.model_name)
 
         self._initialized = True
+
+    @torch.inference_mode()
+    def text_batch(self, texts: TextBatch) -> ClipSpatialTextTensorBatch:
+
+
+        keys = texts.ordered_keys()
+        values = list(texts.ordered_values())
+
+        tokens = self._tokenizer(values).to(self._device)
+
+        feats = self._model.encode_text(tokens)
+        feats = feats / feats.norm(dim=-1, keepdim=True)
+
+        return ClipSpatialTextTensorBatch(
+            ClipSpatialTextTensorBatchData(
+                keys=keys,
+                vectors=feats.detach().float().cpu(),
+            )
+        )
 
 
     @torch.inference_mode()
@@ -93,3 +115,26 @@ class ClipSpatialFeature(FeatureBase['ClipSpatialFeature', ClipSpatialConfig]):
                 regions=generator.regions,
             )
         )
+
+    import icontract
+    import torch
+
+    @staticmethod
+    def _score_embeddings(
+            text_vectors: ClipSpatialTextTensorBatch,
+            spatial_vectors: ClipSpatialTensorBatch,
+    ) -> torch.Tensor:
+        """Return scores with shape [flat_region_count, query_count]."""
+        return spatial_vectors.data().vectors @ text_vectors.data().vectors.T
+
+
+
+    def get_feature_info(self) -> FeatureInfo:
+        return FeatureInfo(
+            namespace=self._config.namespace,
+            feature_type=type(self).__name__,
+            model_name=self._config.model_name,
+            device=str(self._device),
+            configuration=self._config.model_dump(mode="json"),
+        )
+

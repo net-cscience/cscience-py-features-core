@@ -103,8 +103,14 @@ class AsrWhisperConnector(ConnectorBase):
 
         return function(AudioSignal(data)).data()
 
-    def get_service_info(self) -> ServiceInfo:
-        raise NotImplementedError("ServiceInfo is intentionally deferred.")
+    @classmethod
+    def get_service_info(cls) -> ServiceInfo:
+        return ServiceInfo(
+            identifier="asr",
+            name="ASR_Whisper",
+            description="Audio speech recognition service.",
+            operations=ServiceInfo.generate_operations(cls)
+        )
 
     def get_feature_info(self) -> FeatureInfo:
-        raise NotImplementedError("FeatureInfo is intentionally deferred.")
+        return self.feature.get_feature_info()

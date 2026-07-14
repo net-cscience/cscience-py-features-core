@@ -15,7 +15,7 @@ V = TypeVar("V")
 
 
 class SpatialVectorBatchBase(
-    CoreDatatype[SpatialVectorBatchData[V]],
+    SpatialVectorBatchData[V],
     VectorBatchBase[V],
     ABC,
     Generic[V],

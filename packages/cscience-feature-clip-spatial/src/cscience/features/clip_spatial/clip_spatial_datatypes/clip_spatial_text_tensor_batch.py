@@ -1,11 +1,15 @@
+from torch import Tensor
+
+from cscience.features.api.datatypes.base.vector_batch_base import VectorBatchBase
 from cscience.features.clip_spatial.clip_spatial_datatypes.clip_spatial_datatype import ClipSpatialDatatype
-from cscience.features.clip_spatial.clip_spatial_datatypes.clip_tensor_batch_data import ClipTensorBatchData
+from cscience.features.clip_spatial.clip_spatial_datatypes.clip_spatial_text_tensor_batch_data import \
+    ClipSpatialTextTensorBatchData
 
 
-class ClipTensorBatch(ClipSpatialDatatype):
+class ClipSpatialTextTensorBatch(ClipSpatialDatatype,VectorBatchBase[Tensor]):
     """Batch of CLIP embedding tensors with stable source keys."""
 
-    def __init__(self, data: ClipTensorBatchData) -> None:
+    def __init__(self, data: ClipSpatialTextTensorBatchData) -> None:
         if not data.keys:
             raise ValueError("ClipTensorBatch cannot be empty.")
 

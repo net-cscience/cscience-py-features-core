@@ -6,6 +6,7 @@ import torch
 import whisper
 
 from cscience.features.api import FeatureBase
+from cscience.features.api import FeatureInfo
 from .asr_config import AsrConfig
 
 from .asr_whisper_datatypes.audio_signal import AudioSignal
@@ -13,6 +14,7 @@ from .asr_whisper_datatypes.whisper_transcription import (
     WhisperTranscription,
     WhisperTranscriptionData,
 )
+
 
 
 class AsrWhisperFeature(FeatureBase['AsrWhisperFeature',AsrConfig]):
@@ -49,4 +51,14 @@ class AsrWhisperFeature(FeatureBase['AsrWhisperFeature',AsrConfig]):
                 language=result.get("language"),
                 segments=result.get("segments", []),
             )
+        )
+
+
+    def get_feature_info(self) -> FeatureInfo:
+        return FeatureInfo(
+            namespace=self._config.namespace,
+            feature_type=type(self).__name__,
+            model_name=self._config.model_name,
+            device=str(self._device),
+            configuration=self._config.model_dump(mode="json"),
         )

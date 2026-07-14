@@ -4,7 +4,7 @@ from torch import Tensor
 
 
 @dataclass(frozen=True, slots=True)
-class ClipTensorBatchData:
+class ClipSpatialTextTensorBatchData:
     """CLIP tensor batch with stable source keys.
 
     vectors has shape [n, d].

@@ -13,7 +13,7 @@ from .image_fixtures import (
     ErrorMode,
     ImageFixtureBuilder,
     ImageFixtureConfig,
-    ImageOutputFormat,
+    OutputFormat,
     SmallImageMode,
 )
 
@@ -48,7 +48,7 @@ class Base64FixtureCommand:
 class BuildImageFixturesCommand:
     sources_csv: Path
     workspace_root: Path
-    output_format_override: ImageOutputFormat | None
+    output_format_override: OutputFormat | None
     jpeg_quality: int
     small_image_mode: SmallImageMode
     package_filter: str | None
@@ -155,7 +155,7 @@ def run_build_image_fixtures(args: argparse.Namespace) -> None:
     BuildImageFixturesCommand(
         sources_csv=args.sources,
         workspace_root=args.workspace_root,
-        output_format_override=cast(ImageOutputFormat | None, args.format),
+        output_format_override=cast(OutputFormat | None, args.format),
         jpeg_quality=args.jpeg_quality,
         small_image_mode=cast(SmallImageMode, args.on_small),
         package_filter=args.package,
@@ -217,14 +217,14 @@ def add_build_image_fixtures_parser(subparsers: Any) -> None:
     parser = subparsers.add_parser(
         "build-image-fixtures",
         aliases=["build_image_fixtures"],
-        help="Build cropped image fixtures from a CSV manifest.",
+        help="Build image and WAV fixtures from a CSV manifest.",
     )
 
     parser.add_argument(
         "--sources",
         type=Path,
         required=True,
-        help="CSV manifest defining source images, target packages, and resolutions.",
+        help="CSV manifest defining fixture sources, target packages, and outputs.",
     )
 
     parser.add_argument(
@@ -252,10 +252,10 @@ def add_build_image_fixtures_parser(subparsers: Any) -> None:
 
     parser.add_argument(
         "--format",
-        choices=["jpg", "png"],
+        choices=["jpg", "png", "wav"],
         default=None,
         help=(
-            "Optional image-format override. If omitted, each row uses its "
+            "Optional output-format override. If omitted, each row uses its "
             "goal format column."
         ),
     )

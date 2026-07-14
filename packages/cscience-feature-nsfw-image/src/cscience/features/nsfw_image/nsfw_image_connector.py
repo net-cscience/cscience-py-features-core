@@ -89,8 +89,14 @@ class NsfwImageConnector(ConnectorBase):
 
         return function(PilImage(image)).data()
 
-    def get_service_info(self) -> ServiceInfo:
-        raise NotImplementedError("ServiceInfo is intentionally deferred.")
+    @classmethod
+    def get_service_info(cls) -> ServiceInfo:
+        return ServiceInfo(
+            identifier="nsfw_image",
+            name="NSFW Image Classification",
+            description="NSFW image classification service",
+            operations=ServiceInfo.generate_operations(cls)
+        )
 
     def get_feature_info(self) -> FeatureInfo:
-        raise NotImplementedError("FeatureInfo is intentionally deferred.")
+        return self.feature.get_feature_info()

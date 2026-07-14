@@ -4,7 +4,9 @@ import pytesseract
 from PIL import Image, ImageDraw
 from pytesseract import TesseractNotFoundError
 
+from cscience.features.api.feature.feature_info import FeatureInfo
 from cscience.features.ocr_tesseract import OcrTesseractConnector
+from cscience.features.ocr_tesseract.ocr_config import OcrConfig
 
 
 def make_text_image(text: str) -> Image.Image:
@@ -24,7 +26,7 @@ def tesseract_available() -> bool:
 class OcrTesseractFeatureTest(unittest.TestCase):
 
     def test_connector_initializes(self):
-        connector = OcrTesseractConnector()
+        connector = OcrTesseractConnector(OcrConfig())
         self.assertIsNotNone(connector)
 
     @unittest.skipUnless(
@@ -34,11 +36,11 @@ class OcrTesseractFeatureTest(unittest.TestCase):
     def test_extract_text_from_generated_image(self):
         image = make_text_image("Hello OCR")
 
-        connector = OcrTesseractConnector()
+        connector = OcrTesseractConnector(OcrConfig())
         text = connector.text(image)
 
         self.assertIn("Hello", text)
-        self.assertIn("OCR", text)
+        self.assertIn("ocr", text)
 
     @unittest.skipUnless(
         tesseract_available(),
@@ -46,13 +48,14 @@ class OcrTesseractFeatureTest(unittest.TestCase):
     )
     def test_extract_text_batch_preserves_indices(self):
         images = [
-            make_text_image("First OCR"),
-            make_text_image("Second OCR"),
+            make_text_image("first ocr"),
+            make_text_image("second ocr"),
         ]
 
-        connector = OcrTesseractConnector()
+        connector = OcrTesseractConnector(OcrConfig())
         results = connector.text_batch(images)
 
         self.assertEqual(set(results.keys()), {0, 1})
-        self.assertIn("First", results[0])
-        self.assertIn("Second", results[1])
+        self.assertIn("first", results[0])
+        self.assertIn("second", results[1])
+

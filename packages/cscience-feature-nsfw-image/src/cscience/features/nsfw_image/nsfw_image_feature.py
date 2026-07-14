@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
-from cscience.features.api import FeatureBase, PilImageBatch
+from cscience.features.api import FeatureBase, PilImageBatch, FeatureInfo
 from .nsfw_config import NsfwConfig
 
 from .nsfw_image_datatypes.nsfw_prediction import NsfwPredictionData
@@ -81,4 +81,13 @@ class NsfwImageFeature(FeatureBase):
             NsfwPredictionBatchData(
                 predictions=predictions,
             )
+        )
+
+    def get_feature_info(self) -> FeatureInfo:
+        return FeatureInfo(
+            namespace=self._config.namespace,
+            feature_type=type(self).__name__,
+            model_name=self._config.model_name,
+            device=str(self._device),
+            configuration=self._config.model_dump(mode="json"),
         )

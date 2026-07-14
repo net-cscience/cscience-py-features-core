@@ -27,14 +27,13 @@ class TestNsfwImageVisual(unittest.TestCase):
         cls.nsfw_images_batch: list[Image.Image] = []
         cls.sfw_images_batch: list[Image.Image] = []
         for image_path in images_paths:
-            if "nsfw_" in image_path.name:
+            if "nsfw_" in image_path.parent.stem:
                 cls.nsfw_images_batch.append(load_base64_image(image_path))
             else:
                 cls.sfw_images_batch.append(load_base64_image(image_path))
 
 
     def test_nsfw_detected(self):
-
         for nsfw in self.nsfw_images_batch:
             detector = NsfwImageConnector(NsfwConfig())
             prediction = detector.classify(nsfw)
@@ -45,7 +44,6 @@ class TestNsfwImageVisual(unittest.TestCase):
             )
 
     def test_sfw_not_detected(self):
-
         for sfw in self.sfw_images_batch:
             detector = NsfwImageConnector(NsfwConfig())
             prediction = detector.classify(sfw)

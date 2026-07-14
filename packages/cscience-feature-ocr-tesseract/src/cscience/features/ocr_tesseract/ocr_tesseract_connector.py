@@ -10,6 +10,7 @@ from cscience.features.api import (
     Text,
     TextBatch,
 )
+from .ocr_config import OcrConfig
 
 from .ocr_tesseract_conversion_provider import OcrTesseractConversionProvider
 from .ocr_tesseract_datatypes.ocr_result import OcrResult, OcrResultData
@@ -20,9 +21,9 @@ from .ocr_tesseract_feature import OcrTesseractFeature
 class OcrTesseractConnector(ConnectorBase):
     """Public connector for Tesseract OCR."""
 
-    def __init__(self) -> None:
-        self.feature = OcrTesseractFeature.get_instance()
-        super().__init__("ocr_tesseract", OcrTesseractConversionProvider(self.feature))
+    def __init__(self, config: OcrConfig) -> None:
+        self.feature = OcrTesseractFeature.get_instance(config)
+        super().__init__(OcrTesseractConversionProvider(self.feature))
 
     def extract(self, image: Image) -> OcrResultData:
         """Extract a structured OCR result from one image."""
@@ -90,8 +91,14 @@ class OcrTesseractConnector(ConnectorBase):
 
         return function(image_batch).data()
 
-    def get_service_info(self) -> ServiceInfo:
-        raise NotImplementedError("ServiceInfo is intentionally deferred.")
+    @classmethod
+    def get_service_info(cls) -> ServiceInfo:
+        return ServiceInfo(
+            identifier="ocr_tesseract",
+            name="OCR Tesseract",
+            description="Tesseract OCR service",
+            operations=ServiceInfo.generate_operations(cls)
+        )
 
     def get_feature_info(self) -> FeatureInfo:
-        raise NotImplementedError("FeatureInfo is intentionally deferred.")
+        return self.feature.get_feature_info()

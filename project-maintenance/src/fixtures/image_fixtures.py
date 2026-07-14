@@ -12,6 +12,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import wave
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -21,9 +22,9 @@ from urllib.parse import urlparse
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-
 SourceType = Literal["local", "url"]
 ImageOutputFormat = Literal["jpg", "png"]
+OutputFormat = Literal["jpg", "png", "wav"]
 SerializedOutputFormat = Literal["base_64.txt"]
 SmallImageMode = Literal["error", "skip", "upscale"]
 ErrorMode = Literal["fail-fast", "collect", "ignore"]
@@ -97,9 +98,10 @@ class ImageFixtureRow:
     source_type: SourceType
     source: str
     resolutions: tuple[Resolution, ...]
-    goal_format: ImageOutputFormat | None
+    goal_format: OutputFormat | None
     goal_format_serialized: SerializedOutputFormat | None
     nsfw: bool = False
+    in_source_resolution: bool = False
     anchor_x: float = 0.5
     anchor_y: float = 0.5
     license: str = ""
@@ -130,11 +132,22 @@ class ImageFixtureRow:
             identifier,
         )
         resolutions = _selected_resolutions(normalized_row)
+        in_source_resolution = _parse_bool(
+            normalized_row,
+            "in_source_resolution",
+            identifier,
+        )
 
-        if goal_format is not None and not resolutions:
+        if goal_format in {"jpg", "png"} and not resolutions and not in_source_resolution:
             raise ValueError(
                 f"No output resolutions selected for row {identifier}, but "
                 f"goal_format is {goal_format!r}."
+            )
+
+        if goal_format == "wav" and (resolutions or in_source_resolution):
+            raise ValueError(
+                f"Image resolution options are not supported for WAV row "
+                f"{identifier}."
             )
 
         if goal_format is None and goal_format_serialized is None:
@@ -152,6 +165,7 @@ class ImageFixtureRow:
             goal_format=goal_format,
             goal_format_serialized=goal_format_serialized,
             nsfw=_parse_bool(normalized_row, "nsfw", identifier),
+            in_source_resolution=in_source_resolution,
             anchor_x=_parse_anchor(normalized_row, "anchor_x", identifier),
             anchor_y=_parse_anchor(normalized_row, "anchor_y", identifier),
             license=normalized_row.get("license", ""),
@@ -167,7 +181,7 @@ class ImageFixtureRow:
 class ImageFixtureConfig:
     sources_csv: Path
     workspace_root: Path = Path.cwd()
-    output_format_override: ImageOutputFormat | None = None
+    output_format_override: OutputFormat | None = None
     jpeg_quality: int = 95
     small_image_mode: SmallImageMode = "error"
     package_filter: str | None = None
@@ -189,7 +203,10 @@ class ImageFixtureBuilder:
     config: ImageFixtureConfig
     _temporary_files: list[Path] = field(default_factory=list)
     _last_download_at: float | None = None
-    _source_info_updates: dict[tuple[str, str, str], str] = field(default_factory=dict)
+    _source_info_updates: dict[
+        tuple[str, str, str],
+        dict[str, str],
+    ] = field(default_factory=dict)
 
     def run(self) -> None:
         rows = self._read_rows()
@@ -212,11 +229,11 @@ class ImageFixtureBuilder:
                 print(f"Building fixtures for {row.package}/{row.identifier}...")
 
                 try:
-                    source_resolution = self._build_row(row)
+                    source_info = self._build_row(row)
 
-                    if self.config.update_source_info:
+                    if self.config.update_source_info and source_info:
                         key = (row.package, row.identifier, row.source)
-                        self._source_info_updates[key] = source_resolution
+                        self._source_info_updates[key] = source_info
                 except Exception as error:
                     message = f"{row.package}/{row.identifier}: {error}"
                     failures.append(message)
@@ -244,17 +261,13 @@ class ImageFixtureBuilder:
         finally:
             self._cleanup_temporary_files()
 
-    def _build_row(self, row: ImageFixtureRow) -> str:
+    def _build_row(self, row: ImageFixtureRow) -> dict[str, str]:
         source_path = self._resolve_source(row)
         package_dir = self._resolve_package_dir(row.package)
-        output_root = self._resolve_output_root(package_dir)
-        image_output_dir = output_root / row.identifier
-        image_output_dir.mkdir(parents=True, exist_ok=True)
-
-        with Image.open(source_path) as raw_image:
-            image = ImageOps.exif_transpose(raw_image).convert("RGB")
-
         output_format = self.config.output_format_override or row.goal_format
+        output_root = self._resolve_output_root(package_dir, output_format)
+        fixture_output_dir = output_root / row.identifier
+        fixture_output_dir.mkdir(parents=True, exist_ok=True)
 
         metadata: dict[str, object] = {
             "id": row.identifier,
@@ -268,46 +281,145 @@ class ImageFixtureBuilder:
             "classes": row.classes,
             "notes": row.notes,
             "nsfw": row.nsfw,
+            "in_source_resolution": row.in_source_resolution,
             "goal_format": output_format,
             "goal_format_serialized": row.goal_format_serialized,
-            "source_size": {
-                "width": image.width,
-                "height": image.height,
-            },
-            "anchor": {
-                "x": row.anchor_x,
-                "y": row.anchor_y,
-            },
-            "outputs": {},
         }
 
-        if output_format is not None:
-            if not row.resolutions:
-                raise ValueError(
-                    f"No output resolutions selected for row {row.identifier}."
-                )
+        source_info: dict[str, str] = {}
 
-            metadata["outputs"] = self._build_image_outputs(
-                row=row,
-                image=image,
-                image_output_dir=image_output_dir,
-                output_format=output_format,
+        if output_format in {"jpg", "png"}:
+            source_info.update(
+                self._build_image_fixture(
+                    row=row,
+                    source_path=source_path,
+                    fixture_output_dir=fixture_output_dir,
+                    output_format=output_format,
+                    metadata=metadata,
+                )
             )
+        elif output_format == "wav":
+            source_info.update(
+                self._build_wav_fixture(
+                    row=row,
+                    source_path=source_path,
+                    fixture_output_dir=fixture_output_dir,
+                    metadata=metadata,
+                )
+            )
+        elif output_format is not None:
+            raise ValueError(f"Unsupported output format: {output_format}")
 
         if row.goal_format_serialized is not None:
-            serialized_path = image_output_dir / row.goal_format_serialized
+            serialized_path = fixture_output_dir / row.goal_format_serialized
             self._write_base64_fixture(source_path, serialized_path)
             metadata["serialized_output"] = {
                 "format": "base64",
                 "path": serialized_path.name,
             }
 
-        (image_output_dir / "metadata.json").write_text(
+        (fixture_output_dir / "metadata.json").write_text(
             json.dumps(metadata, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
 
-        return f"{image.width}x{image.height}"
+        return source_info
+
+    def _build_image_fixture(
+            self,
+            *,
+            row: ImageFixtureRow,
+            source_path: Path,
+            fixture_output_dir: Path,
+            output_format: ImageOutputFormat,
+            metadata: dict[str, object],
+    ) -> dict[str, str]:
+        with Image.open(source_path) as raw_image:
+            image = ImageOps.exif_transpose(raw_image).convert("RGB")
+
+        metadata["media_type"] = "image"
+        metadata["source_size"] = {
+            "width": image.width,
+            "height": image.height,
+        }
+        metadata["anchor"] = {
+            "x": row.anchor_x,
+            "y": row.anchor_y,
+        }
+        metadata["outputs"] = {}
+
+        if row.resolutions:
+            metadata["outputs"] = self._build_image_outputs(
+                row=row,
+                image=image,
+                image_output_dir=fixture_output_dir,
+                output_format=output_format,
+            )
+
+        if row.in_source_resolution:
+            metadata["source_resolution_output"] = (
+                self._build_source_resolution_output(
+                    image=image,
+                    image_output_dir=fixture_output_dir,
+                    output_format=output_format,
+                )
+            )
+
+        return {
+            "source_resolution": f"{image.width}x{image.height}",
+        }
+
+    def _build_wav_fixture(
+            self,
+            *,
+            row: ImageFixtureRow,
+            source_path: Path,
+            fixture_output_dir: Path,
+            metadata: dict[str, object],
+    ) -> dict[str, str]:
+        audio_info = self._read_wav_info(source_path)
+        output_file = fixture_output_dir / f"{row.identifier}.wav"
+        shutil.copyfile(source_path, output_file)
+
+        metadata["media_type"] = "audio"
+        metadata["source_audio"] = audio_info
+        metadata["audio_output"] = {
+            "format": "wav",
+            "path": output_file.name,
+        }
+
+        return {
+            "source_sample_rate": str(audio_info["sample_rate_hz"]),
+            "source_channels": str(audio_info["channels"]),
+            "source_duration_seconds": f'{audio_info["duration_seconds"]:.6f}',
+        }
+
+    @staticmethod
+    def _read_wav_info(source_path: Path) -> dict[str, int | float | str]:
+        try:
+            with wave.open(str(source_path), "rb") as audio:
+                channels = audio.getnchannels()
+                sample_width_bytes = audio.getsampwidth()
+                sample_rate_hz = audio.getframerate()
+                frame_count = audio.getnframes()
+                compression_type = audio.getcomptype()
+        except (wave.Error, EOFError, OSError) as error:
+            raise ValueError(f"Source is not a valid WAV file: {source_path}") from error
+
+        duration_seconds = (
+            frame_count / sample_rate_hz
+            if sample_rate_hz > 0
+            else 0.0
+        )
+
+        return {
+            "channels": channels,
+            "sample_width_bytes": sample_width_bytes,
+            "sample_rate_hz": sample_rate_hz,
+            "frame_count": frame_count,
+            "duration_seconds": duration_seconds,
+            "compression_type": compression_type,
+        }
 
     def _update_source_info(self) -> None:
         csv_path = self.config.sources_csv
@@ -324,18 +436,34 @@ class ImageFixtureBuilder:
             fieldnames = list(reader.fieldnames)
             raw_rows = list(reader)
 
-        source_resolution_column = next(
-            (
-                column
-                for column in fieldnames
-                if _normalize_column_name(column) == "source_resolution"
-            ),
-            None,
-        )
+        preferred_column_names = {
+            "source_resolution": "source-resolution",
+            "source_sample_rate": "source-sample-rate",
+            "source_channels": "source-channels",
+            "source_duration_seconds": "source-duration-seconds",
+        }
+        used_source_fields = {
+            field
+            for update in self._source_info_updates.values()
+            for field in update
+        }
+        source_columns: dict[str, str] = {}
 
-        if source_resolution_column is None:
-            source_resolution_column = "source-resolution"
-            fieldnames.append(source_resolution_column)
+        for source_field in used_source_fields:
+            existing_column = next(
+                (
+                    column
+                    for column in fieldnames
+                    if _normalize_column_name(column) == source_field
+                ),
+                None,
+            )
+
+            if existing_column is None:
+                existing_column = preferred_column_names[source_field]
+                fieldnames.append(existing_column)
+
+            source_columns[source_field] = existing_column
 
         updated_count = 0
 
@@ -346,12 +474,14 @@ class ImageFixtureBuilder:
                 normalized_row.get("id", ""),
                 normalized_row.get("source", ""),
             )
-            source_resolution = self._source_info_updates.get(key)
+            source_info = self._source_info_updates.get(key)
 
-            if source_resolution is None:
+            if source_info is None:
                 continue
 
-            raw_row[source_resolution_column] = source_resolution
+            for source_field, value in source_info.items():
+                raw_row[source_columns[source_field]] = value
+
             updated_count += 1
 
         temporary_path = csv_path.with_name(f".{csv_path.name}.tmp")
@@ -360,9 +490,9 @@ class ImageFixtureBuilder:
             encoding = "utf-8-sig" if has_utf8_bom else "utf-8"
 
             with temporary_path.open(
-                "w",
-                encoding=encoding,
-                newline="",
+                    "w",
+                    encoding=encoding,
+                    newline="",
             ) as handle:
                 writer = csv.DictWriter(handle, fieldnames=fieldnames)
                 writer.writeheader()
@@ -377,13 +507,35 @@ class ImageFixtureBuilder:
             f"{csv_path}."
         )
 
+    def _build_source_resolution_output(
+
+            self,
+            *,
+            image: Image.Image,
+            image_output_dir: Path,
+            output_format: ImageOutputFormat,
+    ) -> dict[str, str]:
+        resolution = f"{image.width}x{image.height}"
+        output_file = (
+                image_output_dir
+                / "source"
+                / f"{resolution}.{output_format}"
+        )
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        self._save_image(image, output_file, output_format)
+
+        return {
+            "resolution": resolution,
+            "path": str(output_file.relative_to(image_output_dir)),
+        }
+
     def _build_image_outputs(
-        self,
-        *,
-        row: ImageFixtureRow,
-        image: Image.Image,
-        image_output_dir: Path,
-        output_format: ImageOutputFormat,
+            self,
+            *,
+            row: ImageFixtureRow,
+            image: Image.Image,
+            image_output_dir: Path,
+            output_format: ImageOutputFormat,
     ) -> dict[str, object]:
         outputs: dict[str, object] = {}
         grouped = self._group_by_aspect(row.resolutions)
@@ -402,9 +554,9 @@ class ImageFixtureBuilder:
             files: list[dict[str, str]] = []
 
             for resolution in sorted(
-                resolutions,
-                key=lambda item: item.width * item.height,
-                reverse=True,
+                    resolutions,
+                    key=lambda item: item.width * item.height,
+                    reverse=True,
             ):
                 if self._would_upscale(crop, resolution):
                     match self.config.small_image_mode:
@@ -425,9 +577,9 @@ class ImageFixtureBuilder:
                             pass
 
                 output_file = (
-                    image_output_dir
-                    / aspect_name
-                    / f"{resolution.filename}.{output_format}"
+                        image_output_dir
+                        / aspect_name
+                        / f"{resolution.filename}.{output_format}"
                 )
                 output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -460,11 +612,16 @@ class ImageFixtureBuilder:
 
         return outputs
 
-    def _resolve_output_root(self, package_dir: Path) -> Path:
+    def _resolve_output_root(
+            self,
+            package_dir: Path,
+            output_format: OutputFormat | None,
+    ) -> Path:
         if self.config.output_dir is not None:
             return self.config.output_dir.resolve()
 
-        return package_dir / "tests" / "fixtures" / "images-gen"
+        fixture_directory = "audio-gen" if output_format == "wav" else "images-gen"
+        return package_dir / "tests" / "fixtures" / fixture_directory
 
     def _resolve_package_dir(self, package: str) -> Path:
         package_path = Path(package)
@@ -485,7 +642,8 @@ class ImageFixtureBuilder:
     def _resolve_source(self, row: ImageFixtureRow) -> Path:
         match row.source_type:
             case "url":
-                return self._download_source(row.source)
+                output_format = self.config.output_format_override or row.goal_format
+                return self._download_source(row.source, output_format)
             case "local":
                 source_path = Path(row.source)
 
@@ -494,7 +652,7 @@ class ImageFixtureBuilder:
 
                 if not source_path.exists():
                     raise FileNotFoundError(
-                        f"Source image does not exist for {row.identifier}: {source_path}"
+                        f"Source file does not exist for {row.identifier}: {source_path}"
                     )
 
                 if not source_path.is_file():
@@ -506,10 +664,14 @@ class ImageFixtureBuilder:
             case _:
                 raise ValueError(f"Unsupported source type: {row.source_type}")
 
-    def _download_source(self, url: str) -> Path:
+    def _download_source(
+            self,
+            url: str,
+            output_format: OutputFormat | None,
+    ) -> Path:
         cache_path = self._download_cache_path(url)
 
-        if self._cached_download_is_usable(cache_path):
+        if self._cached_download_is_usable(cache_path, output_format):
             return cache_path
 
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -529,23 +691,27 @@ class ImageFixtureBuilder:
                 url,
                 headers={
                     "User-Agent": self.config.user_agent,
-                    "Accept": "image/*,*/*;q=0.8",
+                    "Accept": self._accept_header(output_format),
                 },
             )
 
             try:
                 with urllib.request.urlopen(
-                    request,
-                    timeout=self.config.request_timeout_seconds,
+                        request,
+                        timeout=self.config.request_timeout_seconds,
                 ) as response:
                     content_type = response.headers.get("Content-Type", "")
-                    self._validate_content_type(content_type, url)
+                    self._validate_content_type(
+                        content_type,
+                        url,
+                        output_format,
+                    )
 
                     with temp_path.open("wb") as output:
                         shutil.copyfileobj(response, output)
 
                 if temp_path.stat().st_size == 0:
-                    raise ValueError(f"Downloaded image is empty: {url}")
+                    raise ValueError(f"Downloaded fixture source is empty: {url}")
 
                 temp_path.replace(cache_path)
                 return cache_path
@@ -555,11 +721,11 @@ class ImageFixtureBuilder:
                 temp_path.unlink(missing_ok=True)
 
                 if (
-                    error.code not in _TRANSIENT_HTTP_STATUS_CODES
-                    or attempt == max_attempts - 1
+                        error.code not in _TRANSIENT_HTTP_STATUS_CODES
+                        or attempt == max_attempts - 1
                 ):
                     raise RuntimeError(
-                        f"HTTP {error.code} while downloading fixture image: {url}"
+                        f"HTTP {error.code} while downloading fixture source: {url}"
                     ) from error
 
                 retry_after = None
@@ -572,17 +738,17 @@ class ImageFixtureBuilder:
                 )
 
                 print(
-                    f"Transient HTTP {error.code} while downloading fixture image. "
+                    f"Transient HTTP {error.code} while downloading fixture source. "
                     f"Retrying in {sleep_before_attempt:.1f}s "
                     f"({attempt + 1}/{self.config.download_retries}): {url}",
                     file=sys.stderr,
                 )
 
             except (
-                urllib.error.URLError,
-                TimeoutError,
-                socket.timeout,
-                ValueError,
+                    urllib.error.URLError,
+                    TimeoutError,
+                    socket.timeout,
+                    ValueError,
             ) as error:
                 last_error = error
                 temp_path.unlink(missing_ok=True)
@@ -603,14 +769,14 @@ class ImageFixtureBuilder:
                 )
 
         raise RuntimeError(
-            f"Failed to download fixture image after {max_attempts} attempt(s): {url}"
+            f"Failed to download fixture source after {max_attempts} attempt(s): {url}"
         ) from last_error
 
     def _download_cache_path(self, url: str) -> Path:
         cache_root = self.config.download_cache_dir
 
         if cache_root is None:
-            cache_root = self.config.workspace_root / ".cache" / "fixture-images"
+            cache_root = self.config.workspace_root / ".cache" / "fixture-files"
 
         parsed = urlparse(url)
         suffix = Path(parsed.path).suffix.lower()
@@ -623,24 +789,49 @@ class ImageFixtureBuilder:
         return cache_root.expanduser() / f"{digest}{suffix}"
 
     @staticmethod
-    def _validate_content_type(content_type: str, url: str) -> None:
+    def _accept_header(output_format: OutputFormat | None) -> str:
+        if output_format == "wav":
+            return "audio/wav,audio/x-wav,audio/*;q=0.9,*/*;q=0.8"
+
+        if output_format in {"jpg", "png"}:
+            return "image/*,*/*;q=0.8"
+
+        return "*/*"
+
+    @staticmethod
+    def _validate_content_type(
+            content_type: str,
+            url: str,
+            output_format: OutputFormat | None,
+    ) -> None:
         if not content_type:
             return
 
         media_type = content_type.split(";", maxsplit=1)[0].strip().lower()
 
-        if media_type.startswith("image/"):
-            return
-
         if media_type in {"application/octet-stream", "binary/octet-stream"}:
             return
 
+        if output_format == "wav" and media_type.startswith("audio/"):
+            return
+
+        if output_format in {"jpg", "png"} and media_type.startswith("image/"):
+            return
+
+        if output_format is None:
+            return
+
         raise ValueError(
-            f"URL did not return an image. Content-Type was {content_type!r}: {url}"
+            f"URL returned incompatible Content-Type {content_type!r} for "
+            f"goal format {output_format!r}: {url}"
         )
 
-    @staticmethod
-    def _cached_download_is_usable(path: Path) -> bool:
+    @classmethod
+    def _cached_download_is_usable(
+            cls,
+            path: Path,
+            output_format: OutputFormat | None,
+    ) -> bool:
         if not path.exists():
             return False
 
@@ -649,9 +840,12 @@ class ImageFixtureBuilder:
             return False
 
         try:
-            with Image.open(path) as image:
-                image.verify()
-        except (OSError, UnidentifiedImageError):
+            if output_format == "wav":
+                cls._read_wav_info(path)
+            elif output_format in {"jpg", "png"}:
+                with Image.open(path) as image:
+                    image.verify()
+        except (OSError, UnidentifiedImageError, ValueError):
             print(f"Ignoring invalid cached fixture download: {path}", file=sys.stderr)
             path.unlink(missing_ok=True)
             return False
@@ -676,10 +870,10 @@ class ImageFixtureBuilder:
         self._last_download_at = time.monotonic()
 
     def _retry_delay_seconds(
-        self,
-        *,
-        attempt: int,
-        retry_after: float | None,
+            self,
+            *,
+            attempt: int,
+            retry_after: float | None,
     ) -> float:
         if retry_after is not None:
             if retry_after > self.config.max_retry_after_seconds:
@@ -746,10 +940,10 @@ class ImageFixtureBuilder:
         return rows
 
     def _save_image(
-        self,
-        image: Image.Image,
-        output_file: Path,
-        output_format: ImageOutputFormat,
+            self,
+            image: Image.Image,
+            output_file: Path,
+            output_format: ImageOutputFormat,
     ) -> None:
         match output_format:
             case "jpg":
@@ -771,7 +965,7 @@ class ImageFixtureBuilder:
 
     @staticmethod
     def _group_by_aspect(
-        resolutions: tuple[Resolution, ...],
+            resolutions: tuple[Resolution, ...],
     ) -> dict[str, list[Resolution]]:
         grouped: dict[str, list[Resolution]] = {}
 
@@ -782,10 +976,10 @@ class ImageFixtureBuilder:
 
     @staticmethod
     def _compute_crop_box(
-        image_size: tuple[int, int],
-        aspect_ratio: float,
-        anchor_x: float,
-        anchor_y: float,
+            image_size: tuple[int, int],
+            aspect_ratio: float,
+            anchor_x: float,
+            anchor_y: float,
     ) -> tuple[int, int, int, int]:
         image_width, image_height = image_size
 
@@ -902,9 +1096,9 @@ def _parse_anchor(row: dict[str, str], key: str, identifier: str) -> float:
 
 
 def _parse_goal_format(
-    row: dict[str, str],
-    identifier: str,
-) -> ImageOutputFormat | None:
+        row: dict[str, str],
+        identifier: str,
+) -> OutputFormat | None:
     value = row.get("goal_format", "").strip().lower()
 
     if value in _FALSE_VALUES:
@@ -913,18 +1107,18 @@ def _parse_goal_format(
     if value == "jpeg":
         return "jpg"
 
-    if value not in {"jpg", "png"}:
+    if value not in {"jpg", "png", "wav"}:
         raise ValueError(
             f"Invalid goal_format for row {identifier}: {value!r}. "
-            "Supported values are jpg, png, or None."
+            "Supported values are jpg, png, wav, or None."
         )
 
     return value  # type: ignore[return-value]
 
 
 def _parse_serialized_goal_format(
-    row: dict[str, str],
-    identifier: str,
+        row: dict[str, str],
+        identifier: str,
 ) -> SerializedOutputFormat | None:
     value = row.get("goal_format_serialized", "").strip().lower()
 
@@ -961,6 +1155,9 @@ def _selected_resolutions(row: dict[str, str]) -> tuple[Resolution, ...]:
         "goal_format",
         "goal_format_serialized",
         "source_resolution",
+        "source_sample_rate",
+        "source_channels",
+        "source_duration_seconds",
         "in_source_resolution",
         "swap_sides",
     }

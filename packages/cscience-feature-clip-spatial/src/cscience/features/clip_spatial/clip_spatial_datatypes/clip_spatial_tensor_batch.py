@@ -2,9 +2,10 @@ from torch import Tensor
 import torch
 
 from cscience.features.api import SpatialVectorBatchBase, SpatialVectorBatchData
+from cscience.features.clip_spatial.clip_spatial_datatypes.clip_spatial_datatype import ClipSpatialDatatype
 
 
-class ClipSpatialTensorBatch(SpatialVectorBatchBase[Tensor]):
+class ClipSpatialTensorBatch(ClipSpatialDatatype,SpatialVectorBatchBase[Tensor]):
     """Spatially structured CLIP tensor batch.
 
     Physical structure:
