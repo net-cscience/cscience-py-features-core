@@ -20,9 +20,9 @@ from .clip_feature import ClipFeature
 class ClipConnector(ConnectorBase):
     """Public connector for CLIP text and image embeddings."""
 
-    def __init__(self) -> None:
-        self.feature = ClipFeature.get_instance()
-        super().__init__(ClipConfig.namespace(), ClipConversionProvider(self.feature))
+    def __init__(self,  config: ClipConfig) -> None:
+        self.feature = ClipFeature.get_instance(config, init_if_missing=True)
+        super().__init__(ClipConversionProvider(self.feature))
 
     def text(self, data: str) -> list[float]:
         """Embed a single text string and return one float vector."""

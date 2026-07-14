@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import codecs
 import csv
 import hashlib
 import json
@@ -21,6 +23,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 
 SourceType = Literal["local", "url"]
+ImageOutputFormat = Literal["jpg", "png"]
+SerializedOutputFormat = Literal["base_64.txt"]
 SmallImageMode = Literal["error", "skip", "upscale"]
 ErrorMode = Literal["fail-fast", "collect", "ignore"]
 
@@ -30,6 +34,7 @@ DEFAULT_DOWNLOAD_USER_AGENT = (
 )
 
 _TRUE_VALUES = {"1", "true", "yes", "y", "x"}
+_FALSE_VALUES = {"", "0", "false", "no", "n", "none", "null", "-"}
 _TRANSIENT_HTTP_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
@@ -92,11 +97,15 @@ class ImageFixtureRow:
     source_type: SourceType
     source: str
     resolutions: tuple[Resolution, ...]
+    goal_format: ImageOutputFormat | None
+    goal_format_serialized: SerializedOutputFormat | None
+    nsfw: bool = False
     anchor_x: float = 0.5
     anchor_y: float = 0.5
     license: str = ""
     author: str = ""
     landing_url: str = ""
+    provider: str = ""
     classes: str = ""
     notes: str = ""
 
@@ -115,10 +124,24 @@ class ImageFixtureRow:
                 f"Got: {source_type}"
             )
 
+        goal_format = _parse_goal_format(normalized_row, identifier)
+        goal_format_serialized = _parse_serialized_goal_format(
+            normalized_row,
+            identifier,
+        )
         resolutions = _selected_resolutions(normalized_row)
 
-        if not resolutions:
-            raise ValueError(f"No output resolutions selected for row {identifier}")
+        if goal_format is not None and not resolutions:
+            raise ValueError(
+                f"No output resolutions selected for row {identifier}, but "
+                f"goal_format is {goal_format!r}."
+            )
+
+        if goal_format is None and goal_format_serialized is None:
+            raise ValueError(
+                f"Neither goal_format nor goal_format_serialized is set for "
+                f"row {identifier}."
+            )
 
         return cls(
             identifier=identifier,
@@ -126,11 +149,15 @@ class ImageFixtureRow:
             source_type=source_type,  # type: ignore[arg-type]
             source=source,
             resolutions=resolutions,
+            goal_format=goal_format,
+            goal_format_serialized=goal_format_serialized,
+            nsfw=_parse_bool(normalized_row, "nsfw", identifier),
             anchor_x=_parse_anchor(normalized_row, "anchor_x", identifier),
             anchor_y=_parse_anchor(normalized_row, "anchor_y", identifier),
             license=normalized_row.get("license", ""),
             author=normalized_row.get("author", ""),
             landing_url=normalized_row.get("landing_url", ""),
+            provider=normalized_row.get("provider", ""),
             classes=normalized_row.get("classes", ""),
             notes=normalized_row.get("notes", ""),
         )
@@ -140,11 +167,13 @@ class ImageFixtureRow:
 class ImageFixtureConfig:
     sources_csv: Path
     workspace_root: Path = Path.cwd()
-    output_format: Literal["jpg", "png"] = "jpg"
+    output_format_override: ImageOutputFormat | None = None
     jpeg_quality: int = 95
     small_image_mode: SmallImageMode = "error"
     package_filter: str | None = None
     output_dir: Path | None = None
+    include_nsfw: bool = False
+    update_source_info: bool = False
 
     error_mode: ErrorMode = "fail-fast"
     download_cache_dir: Path | None = None
@@ -160,6 +189,7 @@ class ImageFixtureBuilder:
     config: ImageFixtureConfig
     _temporary_files: list[Path] = field(default_factory=list)
     _last_download_at: float | None = None
+    _source_info_updates: dict[tuple[str, str, str], str] = field(default_factory=dict)
 
     def run(self) -> None:
         rows = self._read_rows()
@@ -182,7 +212,11 @@ class ImageFixtureBuilder:
                 print(f"Building fixtures for {row.package}/{row.identifier}...")
 
                 try:
-                    self._build_row(row)
+                    source_resolution = self._build_row(row)
+
+                    if self.config.update_source_info:
+                        key = (row.package, row.identifier, row.source)
+                        self._source_info_updates[key] = source_resolution
                 except Exception as error:
                     message = f"{row.package}/{row.identifier}: {error}"
                     failures.append(message)
@@ -191,6 +225,9 @@ class ImageFixtureBuilder:
                         raise
 
                     print(f"[ERROR] {message}", file=sys.stderr)
+
+            if self.config.update_source_info and self._source_info_updates:
+                self._update_source_info()
 
             if failures:
                 print("", file=sys.stderr)
@@ -207,16 +244,17 @@ class ImageFixtureBuilder:
         finally:
             self._cleanup_temporary_files()
 
-    def _build_row(self, row: ImageFixtureRow) -> None:
+    def _build_row(self, row: ImageFixtureRow) -> str:
         source_path = self._resolve_source(row)
         package_dir = self._resolve_package_dir(row.package)
         output_root = self._resolve_output_root(package_dir)
+        image_output_dir = output_root / row.identifier
+        image_output_dir.mkdir(parents=True, exist_ok=True)
 
         with Image.open(source_path) as raw_image:
             image = ImageOps.exif_transpose(raw_image).convert("RGB")
 
-        image_output_dir = output_root / row.identifier
-        image_output_dir.mkdir(parents=True, exist_ok=True)
+        output_format = self.config.output_format_override or row.goal_format
 
         metadata: dict[str, object] = {
             "id": row.identifier,
@@ -226,8 +264,12 @@ class ImageFixtureBuilder:
             "license": row.license,
             "author": row.author,
             "landing_url": row.landing_url,
+            "provider": row.provider,
             "classes": row.classes,
             "notes": row.notes,
+            "nsfw": row.nsfw,
+            "goal_format": output_format,
+            "goal_format_serialized": row.goal_format_serialized,
             "source_size": {
                 "width": image.width,
                 "height": image.height,
@@ -239,6 +281,111 @@ class ImageFixtureBuilder:
             "outputs": {},
         }
 
+        if output_format is not None:
+            if not row.resolutions:
+                raise ValueError(
+                    f"No output resolutions selected for row {row.identifier}."
+                )
+
+            metadata["outputs"] = self._build_image_outputs(
+                row=row,
+                image=image,
+                image_output_dir=image_output_dir,
+                output_format=output_format,
+            )
+
+        if row.goal_format_serialized is not None:
+            serialized_path = image_output_dir / row.goal_format_serialized
+            self._write_base64_fixture(source_path, serialized_path)
+            metadata["serialized_output"] = {
+                "format": "base64",
+                "path": serialized_path.name,
+            }
+
+        (image_output_dir / "metadata.json").write_text(
+            json.dumps(metadata, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        return f"{image.width}x{image.height}"
+
+    def _update_source_info(self) -> None:
+        csv_path = self.config.sources_csv
+
+        with csv_path.open("rb") as handle:
+            has_utf8_bom = handle.read(3) == codecs.BOM_UTF8
+
+        with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+
+            if reader.fieldnames is None:
+                raise ValueError(f"Fixture CSV has no header: {csv_path}")
+
+            fieldnames = list(reader.fieldnames)
+            raw_rows = list(reader)
+
+        source_resolution_column = next(
+            (
+                column
+                for column in fieldnames
+                if _normalize_column_name(column) == "source_resolution"
+            ),
+            None,
+        )
+
+        if source_resolution_column is None:
+            source_resolution_column = "source-resolution"
+            fieldnames.append(source_resolution_column)
+
+        updated_count = 0
+
+        for raw_row in raw_rows:
+            normalized_row = _normalize_row(raw_row)
+            key = (
+                normalized_row.get("package", ""),
+                normalized_row.get("id", ""),
+                normalized_row.get("source", ""),
+            )
+            source_resolution = self._source_info_updates.get(key)
+
+            if source_resolution is None:
+                continue
+
+            raw_row[source_resolution_column] = source_resolution
+            updated_count += 1
+
+        temporary_path = csv_path.with_name(f".{csv_path.name}.tmp")
+
+        try:
+            encoding = "utf-8-sig" if has_utf8_bom else "utf-8"
+
+            with temporary_path.open(
+                "w",
+                encoding=encoding,
+                newline="",
+            ) as handle:
+                writer = csv.DictWriter(handle, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerows(raw_rows)
+
+            temporary_path.replace(csv_path)
+        finally:
+            temporary_path.unlink(missing_ok=True)
+
+        print(
+            f"Updated source information for {updated_count} fixture row(s) in "
+            f"{csv_path}."
+        )
+
+    def _build_image_outputs(
+        self,
+        *,
+        row: ImageFixtureRow,
+        image: Image.Image,
+        image_output_dir: Path,
+        output_format: ImageOutputFormat,
+    ) -> dict[str, object]:
+        outputs: dict[str, object] = {}
         grouped = self._group_by_aspect(row.resolutions)
 
         for aspect_name, resolutions in grouped.items():
@@ -280,17 +427,15 @@ class ImageFixtureBuilder:
                 output_file = (
                     image_output_dir
                     / aspect_name
-                    / f"{resolution.filename}.{self.config.output_format}"
+                    / f"{resolution.filename}.{output_format}"
                 )
-
                 output_file.parent.mkdir(parents=True, exist_ok=True)
 
                 resized = crop.resize(
                     (resolution.width, resolution.height),
                     Image.Resampling.LANCZOS,
                 )
-
-                self._save_image(resized, output_file)
+                self._save_image(resized, output_file, output_format)
 
                 files.append(
                     {
@@ -299,7 +444,7 @@ class ImageFixtureBuilder:
                     }
                 )
 
-            metadata["outputs"][aspect_name] = {  # type: ignore[index]
+            outputs[aspect_name] = {
                 "crop_box": {
                     "left": crop_box[0],
                     "top": crop_box[1],
@@ -313,10 +458,7 @@ class ImageFixtureBuilder:
                 "files": files,
             }
 
-        (image_output_dir / "metadata.json").write_text(
-            json.dumps(metadata, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        return outputs
 
     def _resolve_output_root(self, package_dir: Path) -> Path:
         if self.config.output_dir is not None:
@@ -563,6 +705,7 @@ class ImageFixtureBuilder:
             )
 
         rows: list[ImageFixtureRow] = []
+        skipped_nsfw = 0
 
         with self.config.sources_csv.open("r", encoding="utf-8-sig", newline="") as handle:
             reader = csv.DictReader(handle)
@@ -570,19 +713,45 @@ class ImageFixtureBuilder:
             if reader.fieldnames is None:
                 raise ValueError(f"Fixture CSV has no header: {self.config.sources_csv}")
 
-            for row_number, row in enumerate(reader, start=2):
+            for row_number, raw_row in enumerate(reader, start=2):
+                normalized_row = _normalize_row(raw_row)
+                identifier = normalized_row.get("id", f"CSV row {row_number}")
+
                 try:
-                    rows.append(ImageFixtureRow.from_csv_row(row))
+                    is_nsfw = _parse_bool(normalized_row, "nsfw", identifier)
                 except Exception as error:
                     raise ValueError(
                         f"Invalid fixture CSV row {row_number} in "
                         f"{self.config.sources_csv}: {error}"
                     ) from error
 
+                if is_nsfw and not self.config.include_nsfw:
+                    skipped_nsfw += 1
+                    continue
+
+                try:
+                    rows.append(ImageFixtureRow.from_csv_row(normalized_row))
+                except Exception as error:
+                    raise ValueError(
+                        f"Invalid fixture CSV row {row_number} in "
+                        f"{self.config.sources_csv}: {error}"
+                    ) from error
+
+        if skipped_nsfw:
+            print(
+                f"Skipped {skipped_nsfw} NSFW fixture row(s). "
+                "Use --nsfw to include them."
+            )
+
         return rows
 
-    def _save_image(self, image: Image.Image, output_file: Path) -> None:
-        match self.config.output_format:
+    def _save_image(
+        self,
+        image: Image.Image,
+        output_file: Path,
+        output_format: ImageOutputFormat,
+    ) -> None:
+        match output_format:
             case "jpg":
                 image.save(
                     output_file,
@@ -593,7 +762,12 @@ class ImageFixtureBuilder:
             case "png":
                 image.save(output_file, format="PNG", optimize=True)
             case _:
-                raise ValueError(f"Unsupported output format: {self.config.output_format}")
+                raise ValueError(f"Unsupported output format: {output_format}")
+
+    @staticmethod
+    def _write_base64_fixture(source_path: Path, output_path: Path) -> None:
+        encoded = base64.b64encode(source_path.read_bytes()).decode("ascii")
+        output_path.write_text(encoded + "\n", encoding="ascii")
 
     @staticmethod
     def _group_by_aspect(
@@ -694,14 +868,30 @@ def _require(row: dict[str, str], key: str) -> str:
     return value
 
 
+def _parse_bool(row: dict[str, str], key: str, identifier: str) -> bool:
+    value = row.get(key, "").strip().lower()
+
+    if value in _TRUE_VALUES:
+        return True
+
+    if value in _FALSE_VALUES:
+        return False
+
+    raise ValueError(
+        f"Invalid boolean value for {key} in row {identifier}: {value!r}"
+    )
+
+
 def _parse_anchor(row: dict[str, str], key: str, identifier: str) -> float:
     value = row.get(key, "").strip()
 
     if not value:
         return 0.5
 
+    normalized = value.replace(",", ".")
+
     try:
-        anchor = float(value)
+        anchor = float(normalized)
     except ValueError as error:
         raise ValueError(f"Invalid {key} for row {identifier}: {value}") from error
 
@@ -709,6 +899,48 @@ def _parse_anchor(row: dict[str, str], key: str, identifier: str) -> float:
         raise ValueError(f"{key} must be between 0.0 and 1.0 for row {identifier}")
 
     return anchor
+
+
+def _parse_goal_format(
+    row: dict[str, str],
+    identifier: str,
+) -> ImageOutputFormat | None:
+    value = row.get("goal_format", "").strip().lower()
+
+    if value in _FALSE_VALUES:
+        return None
+
+    if value == "jpeg":
+        return "jpg"
+
+    if value not in {"jpg", "png"}:
+        raise ValueError(
+            f"Invalid goal_format for row {identifier}: {value!r}. "
+            "Supported values are jpg, png, or None."
+        )
+
+    return value  # type: ignore[return-value]
+
+
+def _parse_serialized_goal_format(
+    row: dict[str, str],
+    identifier: str,
+) -> SerializedOutputFormat | None:
+    value = row.get("goal_format_serialized", "").strip().lower()
+
+    if value in _FALSE_VALUES:
+        return None
+
+    if value in {"base64.txt", "base_64", "base64"}:
+        value = "base_64.txt"
+
+    if value != "base_64.txt":
+        raise ValueError(
+            f"Invalid goal_format_serialized for row {identifier}: {value!r}. "
+            "Currently supported: base_64.txt or None."
+        )
+
+    return "base_64.txt"
 
 
 def _selected_resolutions(row: dict[str, str]) -> tuple[Resolution, ...]:
@@ -722,17 +954,22 @@ def _selected_resolutions(row: dict[str, str]) -> tuple[Resolution, ...]:
         "license",
         "author",
         "landing_url",
+        "provider",
         "classes",
         "notes",
+        "nsfw",
+        "goal_format",
+        "goal_format_serialized",
+        "source_resolution",
+        "in_source_resolution",
+        "swap_sides",
     }
 
     selected: list[Resolution] = []
 
     for column, value in row.items():
-        if column in reserved_columns:
-            continue
 
-        if not column:
+        if column in reserved_columns or not column:
             continue
 
         if value.strip().lower() not in _TRUE_VALUES:

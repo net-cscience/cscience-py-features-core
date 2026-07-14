@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from ..config.config_base import ConfigBase
+from ..config.core_config import CoreConfig
 from ..conversion.conversion_provider_base import ConversionProviderBase
 from ..datatypes.core_conversion_provider import CoreConversionProvider
 from ..feature.core_feature import CoreFeature
@@ -15,11 +17,11 @@ class ConnectorBase(ABC):
     then exposes convenient methods using normal Python input and output types.
     """
 
-    def __init__(self, name:str, conversion_provider: ConversionProviderBase):
+    def __init__(self, conversion_provider: ConversionProviderBase):
         """Register core conversions and the connector's feature conversions."""
-        core_conversion_provider = CoreConversionProvider(CoreFeature().get_instance())
-        ConversionRegistry.register("core", core_conversion_provider)
-        ConversionRegistry.register(name, conversion_provider)
+        core_conversion_provider = CoreConversionProvider(CoreFeature.get_instance(CoreConfig(), init_if_missing=True))
+        ConversionRegistry.register(core_conversion_provider)
+        ConversionRegistry.register(conversion_provider)
 
     @abstractmethod
     def get_feature_info(self) -> FeatureInfo:

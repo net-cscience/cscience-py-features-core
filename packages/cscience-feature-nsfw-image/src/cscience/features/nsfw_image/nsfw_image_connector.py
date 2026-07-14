@@ -10,6 +10,7 @@ from cscience.features.api import (
     PilImageBatch,
     ServiceInfo,
 )
+from .nsfw_config import NsfwConfig
 
 from .nsfw_image_conversion_provider import NsfwImageConversionProvider
 from .nsfw_image_datatypes.nsfw_prediction import NsfwPrediction, NsfwPredictionData
@@ -20,9 +21,9 @@ from .nsfw_image_feature import NsfwImageFeature
 class NsfwImageConnector(ConnectorBase):
     """Public connector for NSFW image classification."""
 
-    def __init__(self) -> None:
-        self.feature = NsfwImageFeature.get_instance()
-        super().__init__("nsfw_image", NsfwImageConversionProvider(self.feature))
+    def __init__(self, config: NsfwConfig) -> None:
+        self.feature = NsfwImageFeature.get_instance(config)
+        super().__init__( NsfwImageConversionProvider(self.feature))
 
     def classify(self, image: Image) -> NsfwPredictionData:
         """Classify a single image and return the full prediction."""

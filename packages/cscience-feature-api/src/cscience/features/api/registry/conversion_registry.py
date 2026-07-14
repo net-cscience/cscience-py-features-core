@@ -20,7 +20,7 @@ class ConversionRegistry(RegistryBase[ConversionProviderBase]):
         return cls._converters
 
     @classmethod
-    def register(cls, name: str, provider: Tin) -> None:
+    def register(cls, provider: Tin) -> None:
         """Register all converters exposed by a conversion provider."""
         for converter in provider.register_converters():
             cls.get_instance().get_converters()[converter.get_identifier()] = converter

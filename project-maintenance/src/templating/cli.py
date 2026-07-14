@@ -268,7 +268,7 @@ class CreateFeatureTemplateCommand:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="create-feature-template",
+        prog="templating",
         description="Create a new CScience feature package skeleton.",
     )
 

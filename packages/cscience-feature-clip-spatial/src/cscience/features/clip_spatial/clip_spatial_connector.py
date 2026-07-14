@@ -11,6 +11,7 @@ from cscience.features.api import (
     ServiceInfo,
     SpatialFloatVectorBatch,
 )
+from .clip_spatial_config import ClipSpatialConfig
 
 from .clip_spatial_conversion_provider import ClipSpatialConversionProvider
 from .clip_spatial_datatypes.clip_spatial_tensor_batch import ClipSpatialTensorBatch
@@ -20,9 +21,9 @@ from .clip_spatial_feature import ClipSpatialFeature
 class ClipSpatialConnector(ConnectorBase):
     """Public connector for CLIP Spatial region embeddings."""
 
-    def __init__(self) -> None:
-        self.feature = ClipSpatialFeature.get_instance()
-        super().__init__("clip_spatial", ClipSpatialConversionProvider(self.feature))
+    def __init__(self, config: ClipSpatialConfig) -> None:
+        self.feature = ClipSpatialFeature.get_instance(config, init_if_missing=True)
+        super().__init__( ClipSpatialConversionProvider(self.feature))
 
     def image_regions(self, image: Image) -> SpatialFloatVectorBatch:
         """Embed spatial regions of one image."""
@@ -35,7 +36,7 @@ class ClipSpatialConnector(ConnectorBase):
             output_type=SpatialFloatVectorBatch,
         )
 
-        return function(PilImage(image))
+        return function(PilImage(image)).data()
 
     def image_region_batch(
         self,
@@ -58,7 +59,7 @@ class ClipSpatialConnector(ConnectorBase):
             output_type=SpatialFloatVectorBatch,
         )
 
-        return function(image_batch)
+        return function(image_batch).data()
 
     def get_service_info(self) -> ServiceInfo:
         raise NotImplementedError("ServiceInfo is intentionally deferred.")

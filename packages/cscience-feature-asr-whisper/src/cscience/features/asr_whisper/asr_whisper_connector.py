@@ -5,6 +5,7 @@ from cscience.features.api import (
     ServiceInfo,
     Text,
 )
+from .asr_config import AsrConfig
 
 from .asr_whisper_conversion_provider import AsrWhisperConversionProvider
 from .asr_whisper_datatypes.audio_bytes import AudioBytes
@@ -21,8 +22,8 @@ class AsrWhisperConnector(ConnectorBase):
     """Public connector for Whisper ASR."""
 
     def __init__(self) -> None:
-        self.feature = AsrWhisperFeature.get_instance()
-        super().__init__("asr_whisper", AsrWhisperConversionProvider(self.feature))
+        self.feature = AsrWhisperFeature.get_instance(AsrConfig())
+        super().__init__( AsrWhisperConversionProvider(self.feature))
 
     def transcribe_audio_bytes(self, data: bytes) -> WhisperTranscriptionData:
         """Transcribe encoded audio bytes and return the structured result."""

@@ -4,6 +4,7 @@
     <content url="file://$MODULE_DIR$/packages/cscience-feature-nsfw-image">
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-nsfw-image/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-nsfw-image/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-nsfw-image/tests/fixtures/images-gen" />
     </content>
     <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

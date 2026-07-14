@@ -13,6 +13,7 @@ from .image_fixtures import (
     ErrorMode,
     ImageFixtureBuilder,
     ImageFixtureConfig,
+    ImageOutputFormat,
     SmallImageMode,
 )
 
@@ -47,11 +48,13 @@ class Base64FixtureCommand:
 class BuildImageFixturesCommand:
     sources_csv: Path
     workspace_root: Path
-    output_format: str
+    output_format_override: ImageOutputFormat | None
     jpeg_quality: int
     small_image_mode: SmallImageMode
     package_filter: str | None
     output_dir: Path | None
+    include_nsfw: bool
+    update_source_info: bool
 
     error_mode: ErrorMode
     download_cache_dir: Path | None
@@ -66,11 +69,13 @@ class BuildImageFixturesCommand:
             ImageFixtureConfig(
                 sources_csv=self.sources_csv.expanduser(),
                 workspace_root=self.workspace_root.expanduser(),
-                output_format=cast(Any, self.output_format),
+                output_format_override=self.output_format_override,
                 jpeg_quality=self.jpeg_quality,
                 small_image_mode=self.small_image_mode,
                 package_filter=self.package_filter,
                 output_dir=self.output_dir.expanduser() if self.output_dir else None,
+                include_nsfw=self.include_nsfw,
+                update_source_info=self.update_source_info,
                 error_mode=self.error_mode,
                 download_cache_dir=(
                     self.download_cache_dir.expanduser()
@@ -135,7 +140,8 @@ def parse_non_negative_int(value: str) -> int:
 
 
 def run_to_base64(args: argparse.Namespace) -> None:
-    out_path:Path = args.out
+    out_path: Path | None = args.out
+
     if out_path is None:
         out_path = args.image.with_suffix(".txt")
 
@@ -149,11 +155,13 @@ def run_build_image_fixtures(args: argparse.Namespace) -> None:
     BuildImageFixturesCommand(
         sources_csv=args.sources,
         workspace_root=args.workspace_root,
-        output_format=args.format,
+        output_format_override=cast(ImageOutputFormat | None, args.format),
         jpeg_quality=args.jpeg_quality,
         small_image_mode=cast(SmallImageMode, args.on_small),
         package_filter=args.package,
         output_dir=args.out_dir,
+        include_nsfw=args.nsfw,
+        update_source_info=args.update_source_info,
         error_mode=cast(ErrorMode, args.on_error),
         download_cache_dir=args.download_cache_dir,
         request_timeout_seconds=args.request_timeout,
@@ -199,7 +207,7 @@ def add_to_base64_parser(subparsers: Any) -> None:
         "--out",
         type=Path,
         default=None,
-        help="Output text file. Prints to stdout if omitted.",
+        help="Output text file. Defaults to the input filename with .txt suffix.",
     )
 
     parser.set_defaults(handler=run_to_base64)
@@ -238,22 +246,40 @@ def add_build_image_fixtures_parser(subparsers: Any) -> None:
         default=None,
         help=(
             "Optional output override. If omitted, files are written to "
-            "<package>/tests/fixtures/images."
+            "<package>/tests/fixtures/images-gen."
         ),
     )
 
     parser.add_argument(
         "--format",
         choices=["jpg", "png"],
-        default="jpg",
-        help="Output image format.",
+        default=None,
+        help=(
+            "Optional image-format override. If omitted, each row uses its "
+            "goal format column."
+        ),
+    )
+
+    parser.add_argument(
+        "--nsfw",
+        action="store_true",
+        help="Include rows marked as NSFW. Such rows are skipped by default.",
+    )
+
+    parser.add_argument(
+        "--update-source-info",
+        action="store_true",
+        help=(
+            "Write detected source information, such as the EXIF-corrected "
+            "source resolution, back to the CSV manifest."
+        ),
     )
 
     parser.add_argument(
         "--jpeg-quality",
         type=parse_jpeg_quality,
         default=95,
-        help="JPEG quality if --format jpg is used. Must be between 1 and 100.",
+        help="JPEG quality for JPG outputs. Must be between 1 and 100.",
     )
 
     parser.add_argument(
@@ -330,7 +356,6 @@ def add_build_image_fixtures_parser(subparsers: Any) -> None:
 def main(argv: Sequence[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
-
     args.handler(args)
 
 

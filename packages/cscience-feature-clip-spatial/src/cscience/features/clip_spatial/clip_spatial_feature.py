@@ -1,3 +1,4 @@
+import open_clip
 import torch
 
 from cscience.features.api.datatypes.image.pil_image_batch import PilImageBatch
@@ -13,41 +14,38 @@ from .masking.masking_generator import MaskingGenerator
 
 
 
-class ClipSpatialFeature(FeatureBase):
+class ClipSpatialFeature(FeatureBase['ClipSpatialFeature', ClipSpatialConfig]):
     """CLIP Spatial feature service backed by OpenCLIP."""
 
-    def _initialize(self, open_clip=None) -> None:
-        if self._initialized:
-            return
+    def _initialize(self, config: ClipSpatialConfig) -> None:
 
-        self.config = ClipSpatialConfig()
+        self._config = config
+        self._device = torch.device(config.preferred_device) if torch.cuda.is_available() else torch.device("cpu")
+        if config.force_device and not (config.preferred_device == self._device):
+            raise ValueError(f"Preferred device {config.preferred_device} is not available. Using {self._device} instead.")
 
-        if self.config.device == "auto":
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        else:
-            self.device = torch.device(self.config.device)
 
-        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
-            model_name=self.config.model_name,
-            pretrained=self.config.pretrained,
+        self._model, _, self.preprocess = open_clip.create_model_and_transforms(
+            model_name=self._config.model_name,
+            pretrained=self._config.pretrained,
         )
 
-        self.model = self.model.to(self.device).eval()
-        self.tokenizer = open_clip.get_tokenizer(self.config.model_name)
+        self._model = self._model.to(self._device).eval()
+        self.tokenizer = open_clip.get_tokenizer(self._config.model_name)
 
         self._initialized = True
 
-    @classmethod
+
     @torch.inference_mode()
-    def image_region_batch(cls, images: PilImageBatch) -> ClipSpatialTensorBatch:
-        service = cls.get_instance()
+    def image_region_batch(self, images: PilImageBatch) -> ClipSpatialTensorBatch:
+
 
         item_keys = images.ordered_keys()
         image_values = images.ordered_values()
 
         base_tensors = torch.stack(
             [
-                service.preprocess(image)
+                self._model.preprocess(image)
                 for image in image_values
             ]
         )
@@ -58,16 +56,16 @@ class ClipSpatialFeature(FeatureBase):
             raise ValueError(f"Expected 3 image channels, got {channels}.")
 
         geometry = SquareProvider(
-            geometry_size=service.config.region_size,
+            geometry_size=self._config.geometry_size,
         )
 
         indexer = SpatialIndexer(
             item_keys=item_keys,
             image_width=image_width,
             image_height=image_height,
-            grid_shape=service.config.grid_shape,
-            start_point=service.config.start_point,
-            step_size=service.config.step_size,
+            grid_shape=self._config.grid_shape,
+            start_point=self._config.start_point,
+            step_size=self._config.step_size,
             geometry=geometry,
         )
 
@@ -75,12 +73,12 @@ class ClipSpatialFeature(FeatureBase):
             indexer=indexer,
             geometry=geometry,
             filter_provider=ZeroProvider(),
-            mode=service.config.masking_mode,
+            mode=self._config.masking_mode,
         )
 
-        masked_tensors = generator.generate(base_tensors).to(service.device)
+        masked_tensors = generator.generate(base_tensors).to(self._device)
 
-        vectors = service.model.encode_image(masked_tensors)
+        vectors = self._model.encode_image(masked_tensors)
         vectors = vectors / vectors.norm(dim=-1, keepdim=True)
         vectors = vectors.detach().float().cpu()
 

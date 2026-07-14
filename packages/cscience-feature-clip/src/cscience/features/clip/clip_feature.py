@@ -11,30 +11,27 @@ from .clip_config import ClipConfig
 from .clip_datatypes.clip_tensor_batch import ClipTensorBatch, ClipTensorBatchData
 
 
-class ClipFeature(FeatureBase[ClipConfig]):
+class ClipFeature(FeatureBase['ClipFeature', ClipConfig]):
     """CLIP feature service backed by OpenCLIP."""
 
     def _initialize(self, config: ClipConfig) -> None:
-        if self._is_initialized:
-            return
-
         self._model_name = config.model_name
         self._pretrained = config.pretrained
 
 
         self.device = torch.device(config.preferred_device if torch.cuda.is_available() else "cpu")
-        if config.force_device and (config.preferred_device == str(self.device)):
+        if config.force_device and not (config.preferred_device == str(self.device)):
             raise RuntimeError(
                 f"Preferred device {config.preferred_device} is not available. "
                 f"Available device is {self.device}."
             )
 
-        self.model, _, self.preprocess = open_clip.create_model_and_transforms(
+        self._model, _, self._preprocess = open_clip.create_model_and_transforms(
             model_name=self._model_name,
             pretrained=self._pretrained,
         )
 
-        self.model = self.model.to(self.device).eval()
+        self._model = self._model.to(self.device).eval()
         self.tokenizer = open_clip.get_tokenizer(self._model_name)
 
         self._initialized = True
@@ -49,7 +46,7 @@ class ClipFeature(FeatureBase[ClipConfig]):
 
         tokens = self.tokenizer(values).to(self.device)
 
-        feats = self.model.encode_text(tokens)
+        feats = self._model.encode_text(tokens)
         feats = feats / feats.norm(dim=-1, keepdim=True)
 
         return ClipTensorBatch(
@@ -68,12 +65,12 @@ class ClipFeature(FeatureBase[ClipConfig]):
 
         image_tensors = torch.stack(
             [
-                self.preprocess(image)
+                self._preprocess(image)
                 for image in values
             ]
         ).to(self.device)
 
-        feats = self.model.encode_image(image_tensors)
+        feats = self._model.encode_image(image_tensors)
         feats = feats / feats.norm(dim=-1, keepdim=True)
 
         return ClipTensorBatch(

@@ -88,7 +88,7 @@ class ConfigBase(ABC, BaseModel):
             namespace: str | None = None,
             mode: ConfigMode = ConfigMode.CONFIG_PER_FEATURE,
             config_path: str | pathlib.Path | None = None,
-            generate_artifacts: bool = True,
+            generate_artifacts: bool = False,
             **data: Any,
     ) -> None:
         """

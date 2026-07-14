@@ -217,6 +217,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-packages/cscience-feature-clip-spatial/tests/fixtures/images-out/
+# Do not add test fixtures that can be generated using fixture tools.
+packages/*/tests/fixtures/images-out/
+packages/*/tests/fixtures/images-gen/
 
-packages/cscience-feature-clip-spatial/tests/fixtures/images-gen/

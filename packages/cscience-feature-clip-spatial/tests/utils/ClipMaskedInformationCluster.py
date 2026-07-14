@@ -63,7 +63,7 @@ class ClipMaskedInformationCluster:
         base_img_tensor = self.clip_service.preprocess(image)  # [1,3,224,224]$
 
         generator = MaskingGenerator(self.step_size, self.start_point, self.steps, base_img_tensor, self.geometry,
-                                     self.filters, device=self.clip_service.device, mode=self.mode)
+                                     self.filters, device=self.clip_service._device, mode=self.mode)
         base_img_tensor, batch_img_tensor = generator.factory()
         img_f_base = self.clip_service.clip_embedd_norm_img_vectors(base_img_tensor)
         batch_img_f_masked = self.clip_service.clip_embedd_norm_img_vectors(batch_img_tensor)
@@ -92,10 +92,10 @@ class ClipMaskedInformationCluster:
         scores = self.clip_service.influence_calculator(img_f_base, batch_img_f_masked, txt_f, self.mode,
                                                         normalize=False)
         max_idx = np.argmax(scores.detach().cpu().numpy())
-        dummy_image_tensor = torch.zeros((1, 3, processed_image_h, processed_image_w), device=self.clip_service.device)
+        dummy_image_tensor = torch.zeros((1, 3, processed_image_h, processed_image_w), device=self.clip_service._device)
         dummy_generator = MaskingGenerator(self.step_size, self.start_point, self.steps, dummy_image_tensor,
                                            self.geometry,
-                                           self.filters, device=self.clip_service.device, mode=self.mode)
+                                           self.filters, device=self.clip_service._device, mode=self.mode)
         point_hard = taget_point_hard(scores, dummy_generator)
         point_soft = taget_point_soft(scores, dummy_generator)
         return scores, point_hard, point_soft

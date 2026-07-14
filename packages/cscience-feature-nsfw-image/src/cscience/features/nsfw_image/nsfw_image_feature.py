@@ -4,6 +4,7 @@ import torch
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
 from cscience.features.api import FeatureBase, PilImageBatch
+from .nsfw_config import NsfwConfig
 
 from .nsfw_image_datatypes.nsfw_prediction import NsfwPredictionData
 from .nsfw_image_datatypes.nsfw_prediction_batch import (
@@ -15,46 +16,43 @@ from .nsfw_image_datatypes.nsfw_prediction_batch import (
 class NsfwImageFeature(FeatureBase):
     """NSFW image-classification feature backed by Falconsai/nsfw_image_detection."""
 
-    MODEL_NAME = "Falconsai/nsfw_image_detection"
+    def _initialize(self, config: NsfwConfig) -> None:
 
-    def _initialize(self) -> None:
-        if self._initialized:
-            return
+        self._config = config
+        self._device = torch.device(self._config.preferred_device if torch.cuda.is_available() else "cpu")
+        if self._config.force_device and not (self._config.preferred_device == str(self._device)):
+            raise RuntimeError(
+                f"Preferred device {self._config.preferred_device} is not available. "
+                f"Available device is {self._device}."
+            )
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        self.processor = AutoImageProcessor.from_pretrained(self.MODEL_NAME)
-        self.model = AutoModelForImageClassification.from_pretrained(self.MODEL_NAME)
-        self.model = self.model.to(self.device).eval()
+        self._processor = AutoImageProcessor.from_pretrained(self._config.model_name)
+        self._model = AutoModelForImageClassification.from_pretrained(self._config.model_name).to(self._device).eval()
 
         self._initialized = True
 
 
-
-
-    @classmethod
     @torch.inference_mode()
-    def classify_batch(cls, images: PilImageBatch) -> NsfwPredictionBatch:
+    def classify_batch(self, images: PilImageBatch) -> NsfwPredictionBatch:
         """Classify a batch of images as normal or NSFW."""
-        service = cls.get_instance()
 
         keys = images.ordered_keys()
         image_values = list(images.ordered_values())
 
-        inputs = service.processor(
+        inputs = self._processor(
             images=image_values,
             return_tensors="pt",
         )
 
         inputs = {
-            key: value.to(service.device)
+            key: value.to(self._device)
             for key, value in inputs.items()
         }
 
-        outputs = service.model(**inputs)
+        outputs = self._model(**inputs)
         probabilities = torch.softmax(outputs.logits, dim=-1).detach().cpu()
 
-        id_to_label = service.model.config.id2label
+        id_to_label = self._model.config.id2label
         predictions: dict[int, NsfwPredictionData] = {}
 
         for source_key, row in zip(keys, probabilities):

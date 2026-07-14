@@ -3,17 +3,10 @@ from dataclasses import dataclass
 import numpy as np
 
 from .asr_whisper_datatype import AsrWhisperDatatype
+from .audio_signal_data import AudioSignalData
 
 
-@dataclass(frozen=True, slots=True)
-class AudioSignalData:
-    """Whisper-ready mono audio signal."""
-
-    waveform: np.ndarray
-    sample_rate: int
-
-
-class AudioSignal(AsrWhisperDatatype):
+class AudioSignal(AsrWhisperDatatype[AudioSignalData]):
     """Whisper-ready mono float32 audio signal at 16 kHz."""
 
     EXPECTED_SAMPLE_RATE = 16_000
