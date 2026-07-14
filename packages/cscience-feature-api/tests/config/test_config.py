@@ -4,16 +4,11 @@ from typing import Literal
 
 from pydantic import Field
 
-
 from cscience.features.api.config.config_base import ConfigBase
 from cscience.features.api.config.config_mode import ConfigMode
 
 
 class MockConfig(ConfigBase):
-    @classmethod
-    def _default_namespace(cls) -> str:
-        return "mock"
-
     string_value: str = Field(
         default="Hello World!",
         title='A string value',
@@ -56,9 +51,12 @@ class MockConfig(ConfigBase):
         description='This is a literal value for testing purposes.'
     )
 
+    @classmethod
+    def _default_namespace(cls) -> str:
+        return "mock"
+
 
 class FooConfig(ConfigBase):
-
     string_value: str = Field(
         default="What does foo actuali means?",
         title='A string value',
@@ -80,7 +78,6 @@ class FooConfig(ConfigBase):
 
 
 class BarConfig(ConfigBase):
-
     string_value: str = Field(
         default="What does bar actually means?",
         title='A string value',
@@ -101,13 +98,29 @@ class BarConfig(ConfigBase):
         return "bar"
 
 
-
-
-
 class ConfigTest(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        # runs once before any tests in this class
+        MockConfig.set_default_config_directory("./fixtures/config")
+        pass
+
+    @classmethod
+    def tearDownClass(cls):
+        # runs once after all tests in this class
+        pass
+
+    def setUp(self):
+        # runs before each test method
+        pass
+
+    def tearDown(self):
+        # runs after each test method
+        pass
+
     def test_read(self):
-        cfg= MockConfig()
+        cfg = MockConfig()
         print(cfg.model_dump())
         self.assertEqual(cfg.string_value, "Hello World!")
         self.assertEqual(cfg.int_value, 42)
@@ -131,20 +144,17 @@ class ConfigTest(unittest.TestCase):
 
     def test_literal(self):
         cfg = MockConfig(
-            mode = ConfigMode.UNIFIED_CONFIG
+            mode=ConfigMode.UNIFIED_CONFIG
         )
         cfg.literal_value = "test2"
         self.assertEqual(cfg.literal_value, "test2")
         MockConfig.model_validate(cfg)
-
-
 
     def test_persist_local(self):
         foo = FooConfig()
         bar = BarConfig()
         foo.persist()
         bar.persist()
-
 
     def test_persist_per_feature_package(self):
         MockConfig(
@@ -154,39 +164,32 @@ class ConfigTest(unittest.TestCase):
         foo.persist()
         bar.persist()
 
-
-
     def test_persist_unified(self):
-        ConfigBase(
-            mode=ConfigMode.UNIFIED_CONFIG,
-            config_path=Path("../fixtures/configurations.json"),
-        )
-        foo = FooConfig()
-        bar = BarConfig()
+        foo = FooConfig(mode=ConfigMode.UNIFIED_CONFIG)
+        bar = BarConfig(mode=ConfigMode.UNIFIED_CONFIG)
         foo.persist()
         bar.persist()
 
-    def test_persist_per_feature_common_folder(self):
+    def test_persist_per_feature_special_folder(self):
         foo = FooConfig(
             mode=ConfigMode.CONFIG_PER_FEATURE,
-            config_path=Path("../fixtures/config/"),
+            config_path=Path("./fixtures/config/specialpath/"),
         )
         bar = BarConfig(
             mode=ConfigMode.CONFIG_PER_FEATURE,
-            config_path=Path("../fixtures/config/"),
+            config_path=Path("./fixtures/config/specialpath/"),
         )
         foo.persist()
         bar.persist()
-
 
     def test_multiple_namespace(self):
         foo = FooConfig(
             namespace="foo",
-            config_path=Path("../fixtures/config/"),
+
         )
         foo2 = FooConfig(
             namespace="foo2",
-            config_path=Path("../fixtures/config/"),
+
         )
         foo2.int_value = 99
         foo.persist()
