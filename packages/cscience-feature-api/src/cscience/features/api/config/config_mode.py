@@ -1,5 +1,3 @@
-from mypy.nodes import Enum
-
 
 
 
