@@ -1,174 +1,130 @@
-# Clip Spatial Feature Extraction
+# CScience CLIP Spatial Feature
 
+Region-based CLIP image embeddings and text-to-region similarity scoring.
 
-$$
-\begin{align}
-N &= \text{number of source images} \\
-R &= \text{number of regions per image} \\
-V &= \text{embedding vector length, e.g. 512} \\
-C &= \text{channels} \\
-H &= \text{image height} \\
-W &= \text{image width} \\
-T &= \text{number of text queries}
-\end{align}
-$$
+## Overview
 
-For a single image with a 3×3 grid:
+| Property | Value |
+|---|---|
+| Distribution | `cscience-feature-clip-spatial` |
+| Namespace | `clip_spatial` |
+| Runtime | OpenCLIP, PyTorch, Pillow |
+| Entry point | `clip_spatial = cscience.features.clip_spatial:register` |
 
+The package tiles each source image into configurable regions, creates masked or extracted variants, embeds every region, and preserves the mapping between flat GPU batches and logical image-region structure.
 
-$$
-\begin{align}
-N = 1
-R = 9
-\end{align}
-$$
+## Architecture
 
-For an image batch of 16 images with a 3×3 grid:
+```mermaid
+flowchart LR
+    I["PilImageBatch<br/>N images"] --> P["Preprocess"]
+    P --> M["MaskingGenerator<br/>N × R variants"]
+    M --> IE["CLIP image encoder"]
+    IE --> SV["ClipSpatialTensorBatch<br/>[N × R, D]"]
 
-$$
-\begin{align}
-N = 16
-R = 9
-N * R = 144 masked image variants
-\end{align}
-$$
+    T["TextBatch<br/>Q queries"] --> TE["CLIP text encoder"]
+    TE --> TV["ClipSpatialTextTensorBatch<br/>[Q, D]"]
 
-
-The GPU wants the flat form:
-
-$$ [N * R, C, H, W] $$
-
-But the application wants the structured form:
-
-$$ [N, R, C, H, W] $$
-
-
-# CLIP Spatial Datatypes
-
-## Core Idea
-
-CLIP Spatial needs special datatypes only where a flat batch has hidden spatial structure.
-
-A normal CLIP batch has shape:
-
-```text
-[B, V]
+    SV --> S["Matrix score<br/>[N × R, Q]"]
+    TV --> S
+    S --> O["SpatialScoreVectorBatch<br/>layout + regions + query keys"]
 ```
 
-A spatial CLIP batch has logical shape:
+The physical representation is flat for GPU execution. `SpatialBatchLayout` reconstructs logical indices:
 
 ```text
-[N, R, V]
+flat_index <-> (item_index, region_index)
 ```
 
-but is processed physically as:
+## Public API
 
-```text
-[N * R, V]
-```
+### Connector
 
-where:
+| Method | Input | Output | Purpose |
+|---|---|---|---|
+| `image_regions(image)` | `PIL.Image.Image` | `SpatialFloatVectorBatch` | Embed regions of one image |
+| `image_region_batch(images)` | `list[PIL.Image.Image]` | `SpatialFloatVectorBatch` | Embed regions of an image batch |
 
-```text
-N = number of source images
-R = number of regions per image
-V = embedding vector length
-```
+The current connector exposes indexing operations. Text-to-region scoring is available on `ClipSpatialFeature`; a public multi-input connector operation is not yet implemented.
 
-The datatype must guarantee the mapping:
+### Feature
 
-```text
-flat_index <-> (image_index, region_index)
-```
+| Method | Input datatype | Output datatype |
+|---|---|---|
+| `text_batch(texts)` | `TextBatch` | `ClipSpatialTextTensorBatch` |
+| `image_region_batch(images)` | `PilImageBatch` | `ClipSpatialTensorBatch` |
+| `score_embeddings(text_vectors, spatial_vectors)` | two feature datatypes | `SpatialScoreVectorBatch` |
+| `score_text_vector_batch(texts, spatial_vectors)` | `TextBatch` plus spatial embeddings | `SpatialScoreVectorBatch` |
+| `score_text_image_batch(texts, images)` | `TextBatch` plus `PilImageBatch` | `SpatialScoreVectorBatch` |
 
 ## Datatypes
 
-Reuse existing CLIP/core datatypes:
+| Datatype | Stored representation | Guarantee |
+|---|---|---|
+| `ClipSpatialTensorBatch` | flat `dict[int, Tensor[D]]` plus layout | Spatial image-region embeddings |
+| `ClipSpatialTextTensorBatch` | keys plus packed `Tensor[Q, D]` | Text embeddings with stable query keys |
+| `SpatialScoreVectorBatch` | `dict[flat_region, list[score]]` | One score per query for every region |
+| `SpatialVectorBatchData` | vectors, layout, item keys, regions | Reversible flat-to-structured mapping |
+| `SpatialRegion` | pixel and normalized bounds | Region geometry and grid position |
+
+For `N` images, `R` regions, embedding dimension `D`, and `Q` queries:
 
 ```text
-ClipImage
-ClipImageBatch
-Text
-TextBatch
-ClipTensor
-ClipTensorBatch
-FloatVector
-FloatVectorBatch
+image embeddings: [N × R, D]
+text embeddings:  [Q, D]
+scores:           [N × R, Q]
 ```
 
-Add spatial datatypes:
+## Configuration
 
-```text
-ClipSpatialBatchLayout
-ClipSpatialRegion
-ClipSpatialImageBatch
-ClipSpatialTensorBatch
-SpatialFloatVectorBatch
-ClipSpatialScoreBatch
+| Field | Default | Meaning |
+|---|---|---|
+| `model_name` | `xlm-roberta-base-ViT-B-32` | OpenCLIP model architecture |
+| `pretrained` | `laion5b_s13b_b90k` | Pretrained checkpoint |
+| `preferred_device` | `cuda` | Requested inference device |
+| `force_device` | `False` | Fail instead of falling back |
+| `grid_shape` | `(5, 7)` | Region rows and columns |
+| `start_point` | `(1/6, 1/8)` | Normalized first region center |
+| `step_size` | `(1/6, 1/8)` | Normalized center displacement |
+| `geometry_size` | `(1/3, 1/4)` | Relative region height and width |
+| `masking_mode` | `KEEP_ONLY` | `MASK_OUT`, `KEEP_ONLY`, or `EXTRACT` |
+
+## Usage
+
+```python
+from PIL import Image
+
+from cscience.features.api import PilImageBatch, TextBatch
+from cscience.features.clip_spatial.clip_spatial_config import ClipSpatialConfig
+from cscience.features.clip_spatial.clip_spatial_feature import ClipSpatialFeature
+
+feature = ClipSpatialFeature.get_instance(ClipSpatialConfig())
+
+scores = feature.score_text_image_batch(
+    texts=TextBatch({
+        100: "red object",
+        200: "round object",
+    }),
+    images=PilImageBatch({
+        10: Image.open("scene.png").convert("RGB"),
+    }),
+)
+
+region_scores = scores.vector_at(item_index=0, region_index=0)
 ```
 
-## Indexing Pipeline
+## Development
 
-```mermaid
-flowchart LR
-    A["ClipImageBatch<br/>N images"] --> B["Masking / Extraction"]
-    B --> C["ClipSpatialImageBatch<br/>physical: [N * R, C, H, W]<br/>logical: [N, R, C, H, W]"]
-    C --> D["CLIP Image Encoder"]
-    D --> E["ClipSpatialTensorBatch<br/>physical: [N * R, V]<br/>logical: [N, R, V]"]
-    E --> F["SpatialFloatVectorBatch<br/>flat vectors + layout + regions"]
-    F --> G["Index / Database"]
+```bash
+uv run pytest packages/cscience-feature-clip-spatial/tests
 ```
 
-## Retrieval Pipeline
+Fast scoring and datatype tests do not require model initialization. Integration tests may download model weights and use GPU acceleration.
 
-```mermaid
-flowchart LR
-    A["Text or TextBatch"] --> B["CLIP Text Encoder"]
-    B --> C["ClipTensor or ClipTensorBatch<br/>[T, V]"]
+## Design Notes
 
-    D["SpatialFloatVectorBatch<br/>logical: [N, R, V]"] --> E["Score Calculation"]
-    C --> E
-
-    E --> F["ClipSpatialScoreBatch<br/>single text: [N, R]<br/>text batch: [T, N, R]"]
-```
-
-## Direct Image Retrieval
-
-```mermaid
-flowchart LR
-    A["Image / ImageBatch"] --> B["Masking"]
-    B --> C["ClipSpatialImageBatch"]
-    C --> D["CLIP Image Encoder"]
-    D --> E["ClipSpatialTensorBatch"]
-
-    F["Text / TextBatch"] --> G["CLIP Text Encoder"]
-    G --> H["ClipTensor / ClipTensorBatch"]
-
-    E --> I["Score Calculation"]
-    H --> I
-    I --> J["ClipSpatialScoreBatch"]
-```
-
-## Design Rule
-
-The config stays in the config file.
-
-Datatypes should not decide masking mode, grid size, model name, or device.
-They should only preserve the actual produced structure:
-
-```text
-layout
-regions
-tensor/vector data
-```
-
-## Important Guarantee
-
-`ClipSpatialBatchLayout` must guarantee:
-
-```text
-flat_count = image_count * regions_per_image
-flat_index = image_index * regions_per_image + region_index
-```
-
-This allows efficient GPU batching while preserving the spatial structure needed for indexing, retrieval, and score interpretation.
+- Grid, geometry, masking mode, model, and device remain configuration concerns.
+- Datatypes preserve produced structure but do not decide how regions are generated.
+- Scores are not restricted to `[0, 1]`; normalized CLIP dot products may be negative.
+- `FunctionConnector` is unary, so multi-input scoring should be exposed through explicit connector composition.
+- The namespace base belongs in `clip_spatial_datatypes/clip_spatial_datatype.py`; the obsolete top-level duplicate should be removed.

@@ -1,343 +1,143 @@
-# CScience Feature Core
+# CScience Python Features Core
 
-Core Python feature infrastructure for CScience feature extraction packages.
+A modular Python workspace for media feature extraction, datatype conversion, and connector-based integration. The workspace separates feature-independent API contracts from model-backed feature packages.
 
-The project separates the feature API from concrete feature implementations. The API package defines datatypes, conversion handling, feature lifecycle management, connectors, and registries. Feature packages, such as `cscience-feature-clip`, implement concrete models and expose them through typed connectors.
+## Workspace Architecture
 
-Configuration loading, `FeatureInfo`, and `ServiceInfo` are intentionally not implemented yet. These parts are planned for a later step.
+```mermaid
+flowchart LR
+    A["Application<br/>Python or .NET bridge"] --> B["Connector"]
+    B --> C["FunctionConnector"]
+    C --> D["ConversionRegistry"]
+    D --> E["Feature input datatype"]
+    E --> F["Feature"]
+    F --> G["Feature output datatype"]
+    G --> D
+    D --> H["Core output datatype"]
+    H --> A
 
-## Package Structure
-
-```text
-packages/
-  cscience-feature-api/
-    src/cscience/features/api/
-      config/          # Config base types; runtime loading is deferred
-      connector/       # Public connector abstraction and function wrapper
-      conversion/      # Converter, conversion keys, and search strategies
-      datatypes/       # Core datatype hierarchy and core conversions
-      feature/         # Feature singleton lifecycle and metadata placeholders
-      registry/        # Conversion registry
-      utils/           # Small development utilities
-
-  cscience-feature-clip/
-    src/cscience/features/clip/
-      clip_datatypes/  # CLIP-specific datatypes
-      clip_feature.py  # Model loading and batch embedding
-      clip_connector.py
-      clip_conversion_provider.py
-      clip_config.py   # Config schema only; loading is deferred
+    API["cscience-feature-api"] -. contracts .-> B
+    API -. datatypes .-> D
+    API -. lifecycle .-> F
 ```
 
-## Other Feature Packages
+The API package defines the common contracts. Feature packages provide model-specific datatypes, converters, feature implementations, and public connectors.
 
-Clip: [cscience-feature-clip/Readme.md](packages/cscience-feature-clip/Readme.md)
-NSFW Image: [cscience-feature-nsfw-image/Readme.md](packages/cscience-feature-nsfw-image/Readme.md)
-OCR Tesseract: [cscience-feature-ocr-tesseract/Readme.md](packages/cscience-feature-ocr-tesseract/Readme.md)
+## Packages
+
+| Package | Namespace | Purpose |
+|---|---|---|
+| `cscience-feature-api` | `core` | Shared datatypes, conversion registry, connectors, configuration, and feature lifecycle |
+| `cscience-feature-clip` | `clip` | OpenCLIP text and image embeddings |
+| `cscience-feature-clip-spatial` | `clip_spatial` | Region-based image embeddings and text-to-region scoring |
+| `cscience-feature-asr-whisper` | `asr_whisper` | Whisper speech recognition with audio decoding and resampling |
+| `cscience-feature-nsfw-image` | `nsfw_image` | Image safety classification and NSFW scores |
+| `cscience-feature-ocr-tesseract` | `ocr_tesseract` | Tesseract OCR for single images and batches |
+
+Each package contains its own `README.md` with the same structure.
 
 ## Core Concepts
 
-
-
 ### Datatypes
+
+Feature boundaries use datatype classes rather than raw Python values.
+
 ```mermaid
 classDiagram
-direction TB
+    class DatatypeBase {
+        +data()
+    }
 
-class DatatypeBase {
-    <<data owner>>
-    -_data
-    +data()
-}
+    class NamespaceDatatype {
+        +namespace
+    }
 
-class CoreDatatype {
-    <<namespace>>
-    +namespace = "core"
-}
+    class StructuralMixin {
+        <<mixin>>
+        +validation
+        +accessors
+    }
 
-class ClipDatatype {
-    <<namespace>>
-    +namespace = "clip"
-}
+    class ConcreteDatatype
 
-class ArbitraryDatatype {
-    <<namespace>>
-    +namespace = "arbitrary"
-}
-
-DatatypeBase <|-- CoreDatatype
-DatatypeBase <|-- ClipDatatype
-DatatypeBase <|-- ArbitraryDatatype
-```
-```mermaid
-classDiagram
-direction TB
-
-class DatatypeBase {
-    <<data owner>>
-}
-
-class CoreDatatype {
-    <<namespace>>
-}
-
-class BatchBase {
-    <<structural mixin>>
-    #_batch_mapping()
-    +batch_size()
-    +ordered_keys()
-    +ordered_values()
-    +ordered_items()
-}
-
-class VectorBase {
-    <<structural mixin>>
-    +length()
-    +assert_length()
-}
-
-class VectorBatchBase {
-    <<structural mixin>>
-    +length()
-    +assert_length()
-}
-
-class EmbeddingBase {
-    <<semantic mixin>>
-    +length()*
-    +embedding_dim()
-}
-
-DatatypeBase <|-- CoreDatatype
-BatchBase <|-- VectorBatchBase
+    DatatypeBase <|-- NamespaceDatatype
+    StructuralMixin <|-- ConcreteDatatype
+    NamespaceDatatype <|-- ConcreteDatatype
 ```
 
-All data passed through the feature system is wrapped in explicit datatype classes.
-
-Examples:
-
-```text
-Text
-TextBatch
-FloatVector
-FloatVectorBatch
-ClipImage
-ClipImageBatch
-ClipTensorBatch
-```
-
-This keeps raw Python types separate from semantic feature types. For example, `list[float]` alone does not describe whether a vector is a CLIP embedding, a YOLO feature, or another embedding type.
-
-### Features
-
-A feature is a singleton service object that owns expensive resources such as model weights.
-
-Example:
-
-```python
-feature = ClipFeature.get_instance()
-```
-
-Feature initialization happens once per concrete feature class.
+A concrete datatype combines exactly one namespace datatype with zero or more namespace-neutral structural or semantic mixins.
 
 ### Conversions
 
-A converter maps one datatype into another datatype.
+Converters are registered by feature class and source/target datatype. Lookup first checks the active feature and then falls back to core conversions.
 
-Example:
-
-```text
-Text -> TextBatch
-ClipImage -> ClipImageBatch
-ClipTensorBatch -> FloatVector
+```mermaid
+flowchart LR
+    A["Public datatype"] --> B["Input converter"]
+    B --> C["Feature datatype"]
+    C --> D["Feature method"]
+    D --> E["Feature result datatype"]
+    E --> F["Output converter"]
+    F --> G["Public datatype"]
 ```
 
-Converters are registered through a `ConversionProviderBase`.
+### Feature lifecycle
 
-### Connectors
+`FeatureBase` creates one feature instance per configuration namespace. Configuration identity is namespace-based, allowing separate model instances such as `clip` and `clip-large`.
 
-A connector is the public user-facing API of a feature package.
+## Installation
 
-Example:
+The workspace requires Python 3.13.
+
+```bash
+uv sync --all-packages
+```
+
+GPU-enabled Torch packages use the configured PyTorch CUDA index on Linux and Windows. Packages that do not require Torch, such as Tesseract OCR, remain lightweight.
+
+## Basic Usage
 
 ```python
-clip = ClipConnector()
-vector = clip.text("Hello World")
-vectors = clip.image_batch(images)
+from cscience.features.clip import ClipConnector
+from cscience.features.clip.clip_config import ClipConfig
+
+connector = ClipConnector(ClipConfig())
+embedding = connector.text("a red industrial robot")
 ```
 
-Internally, a connector builds a conversion chain:
+Use package connectors for normal Python values. Use feature classes and datatypes directly when building internal pipelines or custom conversion graphs.
 
-```text
-input datatype -> feature input datatype -> feature output datatype -> output datatype
-```
+## Development
 
-## CLIP Feature Flow
-
-The current CLIP package uses one batch-oriented model path.
-
-```text
-Text
-  -> TextBatch
-  -> ClipTensorBatch
-  -> FloatVector
-
-TextBatch
-  -> TextBatch
-  -> ClipTensorBatch
-  -> FloatVectorBatch
-
-ClipImage
-  -> ClipImageBatch
-  -> ClipTensorBatch
-  -> FloatVector
-
-ClipImageBatch
-  -> ClipImageBatch
-  -> ClipTensorBatch
-  -> FloatVectorBatch
-```
-
-`ClipFeature` performs the actual model inference. `ClipConnector` exposes convenient methods for normal Python inputs and outputs.
-
-## Adding a New Feature
-
-Create a new package:
-
-```text
-packages/cscience-feature-example/
-  pyproject.toml
-  src/cscience/features/example/
-    __init__.py
-    example_datatype.py
-    example_feature.py
-    example_connector.py
-    example_conversion_provider.py
-    example_datatypes/
-      example_input.py
-      example_tensor_batch.py
-```
-
-### 1. Define feature-specific datatypes
-
-```python
-class ExampleDatatype(DatatypeBase, ABC):
-    namespace = "example"
-```
-
-Then define concrete input and output datatypes:
-
-```python
-class ExampleInput(ExampleDatatype):
-    pass
-
-class ExampleTensorBatch(ExampleDatatype):
-    pass
-```
-
-Use core datatypes such as `Text`, `TextBatch`, `FloatVector`, and `FloatVectorBatch` when possible.
-
-### 2. Implement the feature
-
-```python
-class ExampleFeature(FeatureBase):
-
-    def _initialize(self) -> None:
-        # Load model weights or other expensive resources here.
-        pass
-
-    @classmethod
-    def embed_batch(cls, data: ExampleInputBatch) -> ExampleTensorBatch:
-        service = cls.get_instance()
-        # Run inference here.
-        ...
-```
-
-Feature methods should consume and return datatype classes, not raw Python values.
-
-### 3. Register conversions
-
-```python
-class ExampleConversionProvider(ConversionProviderBase):
-
-    def register_converters(self) -> list[Converter]:
-        return [
-            Converter(
-                name="example_tensor_batch_to_float_vector_batch",
-                source=self._feature,
-                function=lambda x: FloatVectorBatch(...),
-                input_type=ExampleTensorBatch,
-                output_type=FloatVectorBatch,
-            ),
-        ]
-```
-
-Add converters for all public input and output forms the connector should support.
-
-### 4. Implement the connector
-
-```python
-class ExampleConnector(ConnectorBase):
-
-    def __init__(self) -> None:
-        self.feature = ExampleFeature.get_instance()
-        super().__init__("example", ExampleConversionProvider(self.feature))
-
-    def text(self, data: str) -> list[float]:
-        function = FunctionConnector(
-            feature=self.feature,
-            function=self.feature.embed_batch,
-            input_type=Text,
-            input_feature_type=TextBatch,
-            output_feature_type=ExampleTensorBatch,
-            output_type=FloatVector,
-        )
-        return function(Text(data)).data()
-```
-
-The connector should expose normal Python input and output types.
-
-### 5. Add package entry-point registration
-
-In the feature package `__init__.py`:
-
-```python
-def register(registry: RegistryBase) -> None:
-    registry.register("example", ExampleConversionProvider)
-```
-
-In `pyproject.toml`:
-
-```toml
-[project.entry-points."cscience.features"]
-example = "cscience.features.example:register"
-```
-
-## CUDA Support
-
-CUDA dependencies belong to feature packages, not to `cscience-feature-api`.
-
-The CLIP package maps PyTorch to the CUDA 12.8 wheel index through `tool.uv.sources` and `[[tool.uv.index]]`. The API package intentionally stays lightweight and only depends on Pydantic.
-
-## Development Notes
-
-Run tests from the package or workspace root:
+Run the complete workspace test suite:
 
 ```bash
 uv run pytest
 ```
 
-Verify CUDA availability:
+Run one package:
 
 ```bash
-uv run python -c "import torch; print(torch.__version__); print(torch.version.cuda); print(torch.cuda.is_available())"
+uv run pytest packages/cscience-feature-clip/tests
 ```
 
-Use the timing decorator only for local benchmarking and development tests.
+Validate package documentation:
 
-### PyCharm Support
+```bash
+uv run python -m unittest tests.test_package_readmes
+```
 
-When using PyCharm, install the **Pydantic** plugin to improve type inference and constructor completion for Pydantic models.
+## Documentation Convention
 
-Without the plugin, PyCharm may incorrectly report inherited custom constructor arguments such as `namespace`, `mode`, or `config_path` as unexpected, although the code runs correctly.
+Every directory under `packages/` containing a `pyproject.toml` must also contain a `README.md` with these sections:
 
+1. Overview
+2. Architecture
+3. Public API
+4. Datatypes
+5. Configuration
+6. Usage
+7. Development
+8. Design Notes
+
+Use `README_TEMPLATE.md` when adding a package. The documentation test enforces file presence and section names.
