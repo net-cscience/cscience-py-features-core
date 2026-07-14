@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 import json
 import pathlib
 import re
@@ -15,115 +14,33 @@ from cscience.features.api.config.config_mode import ConfigMode
 
 
 class ConfigBase(ABC, BaseModel):
+    """Base class for validated, namespace-addressable configurations.
+
+    Configuration storage must be configured explicitly.
+
+    A default directory can be set once for all configurations:
+
+        ConfigBase.set_default_config_directory("configs")
+
+    In CONFIG_PER_FEATURE mode, configurations are stored as:
+
+        <default-directory>/<namespace>.json
+
+    In UNIFIED_CONFIG mode, configurations are stored as:
+
+        <default-directory>/configurations.json
+
+    An individual configuration can override the default location using
+    config_path.
+
+    In CONFIG_PER_FEATURE mode, config_path refers to a directory.
+
+    In UNIFIED_CONFIG mode, config_path refers to a JSON file.
+
+    No package-root or current-working-directory discovery is performed.
+    Generated templates and schemas are stored beside the resolved runtime
+    configuration file.
     """
-    Base class for validated, namespace-addressable configurations.
-
-    Each configuration instance defines its own namespace, persistence mode,
-    and persistence path. No global initialization is required.
-
-    Concrete subclasses define a default namespace through
-    :meth:`_default_namespace`. The namespace can be overridden during
-    construction::
-
-        default_config = ClipConfig()
-        alternative_config = ClipConfig(namespace="clip-large")
-
-    The namespace identifies the configuration and determines:
-
-    - the top-level key in unified configuration mode;
-    - the filename in per-feature configuration mode;
-    - the generated template and schema filenames;
-    - configuration equality and hashing.
-
-    Namespaces are immutable after construction.
-
-    In ``ConfigMode.UNIFIED_CONFIG``, ``config_path`` refers to a single JSON
-    file. Each configuration instance is stored under its namespace::
-
-        {
-            "clip": {
-                "model_name": "ViT-B-32"
-            },
-            "clip-large": {
-                "model_name": "ViT-L-14"
-            }
-        }
-
-    When no path is supplied, ``configurations.json`` in the current working
-    directory is used.
-
-    In ``ConfigMode.CONFIG_PER_FEATURE``, ``config_path`` refers to a
-    directory. Each configuration is stored as ``<namespace>.json`` within
-    that directory.
-
-    When no directory is supplied, the configuration is stored in the
-    ``resources/config`` directory of the package containing the concrete
-    configuration class.
-
-    Templates and JSON schemas are generated automatically when a
-    configuration is loaded or persisted, unless artifact generation is
-    disabled during construction. They are stored in the package's
-    ``resources/config`` directory.
-
-    Artifact filenames are based on the runtime configuration filename. For
-    example, ``clip-large.json`` produces::
-
-        template_clip-large.json
-        schema_clip-large.json
-
-    :meth:`persist` writes the complete validated model state atomically.
-
-    :meth:`load` validates the stored configuration and replaces the current
-    model state in place. The namespace, mode, and persistence path remain
-    unchanged. If parsing or validation fails, the current state remains
-    unchanged.
-
-    Package roots are located by searching upward from the file containing the
-    concrete configuration class for a directory containing
-    ``pyproject.toml`` and either ``src`` or ``tests``.
-    """
-    def __init__(
-            self,
-            *,
-            namespace: str | None = None,
-            mode: ConfigMode = ConfigMode.CONFIG_PER_FEATURE,
-            config_path: str | pathlib.Path | None = None,
-            generate_artifacts: bool = False,
-            **data: Any,
-    ) -> None:
-        """
-         Construct a configuration instance.
-
-         Args:
-             namespace:
-                 Optional namespace override. The concrete class's default
-                 namespace is used when omitted.
-             mode:
-                 Persistence mode for this instance.
-             config_path:
-                 A JSON file in unified mode or a directory in per-feature
-                 mode.
-             generate_artifacts:
-                 Whether template and schema files should be generated when
-                 this configuration is loaded or persisted.
-             **data:
-                 Values for the concrete Pydantic configuration model.
-         """
-        super().__init__(**data)
-
-        selected_namespace = (
-            type(self)._default_namespace()
-            if namespace is None
-            else namespace
-        )
-
-        self._namespace = self._validate_namespace(selected_namespace)
-        self._mode = mode
-        self._artifacts_enabled = generate_artifacts
-        self._config_path = self._resolve_config_path(
-            mode=mode,
-            config_path=config_path,
-        )
 
     model_config = ConfigDict(
         extra="forbid",
@@ -135,30 +52,120 @@ class ConfigBase(ABC, BaseModel):
     _config_path: pathlib.Path = PrivateAttr()
     _artifacts_enabled: bool = PrivateAttr()
 
-    _unified_config_lock: ClassVar[RLock] = RLock()
+    _default_config_directory: ClassVar[
+        pathlib.Path | None
+    ] = None
 
-    _package_root_override: ClassVar[pathlib.Path | None] = None
+    _unified_config_filename: ClassVar[str] = (
+        "configurations.json"
+    )
+
+    _unified_config_lock: ClassVar[RLock] = RLock()
 
     _NAMESPACE_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
         r"^[A-Za-z0-9][A-Za-z0-9._-]*$"
     )
 
-    _WINDOWS_RESERVED_NAMES: ClassVar[frozenset[str]] = frozenset(
-        {"CON", "PRN", "AUX", "NUL"}
-        | {f"COM{index}" for index in range(1, 10)}
-        | {f"LPT{index}" for index in range(1, 10)}
+    _WINDOWS_RESERVED_NAMES: ClassVar[frozenset[str]] = (
+        frozenset(
+            {"CON", "PRN", "AUX", "NUL"}
+            | {
+                f"COM{index}"
+                for index in range(1, 10)
+            }
+            | {
+                f"LPT{index}"
+                for index in range(1, 10)
+            }
+        )
     )
 
+    def __init__(
+        self,
+        *,
+        namespace: str | None = None,
+        mode: ConfigMode = ConfigMode.CONFIG_PER_FEATURE,
+        config_path: str | pathlib.Path | None = None,
+        generate_artifacts: bool = False,
+        **data: Any,
+    ) -> None:
+        """Construct a configuration instance.
 
+        Args:
+            namespace:
+                Optional namespace override.
+            mode:
+                Unified-file or per-feature-file storage.
+            config_path:
+                Optional per-instance path override. This is a file in
+                unified mode and a directory in per-feature mode.
+            generate_artifacts:
+                Whether template and schema files should be generated when
+                loading or persisting.
+            **data:
+                Values for the concrete Pydantic model.
+        """
+        super().__init__(**data)
+
+        selected_namespace = (
+            type(self)._default_namespace()
+            if namespace is None
+            else namespace
+        )
+
+        self._namespace = self._validate_namespace(
+            selected_namespace
+        )
+        self._mode = mode
+        self._artifacts_enabled = generate_artifacts
+        self._config_path = self._resolve_config_path(
+            mode=mode,
+            config_path=config_path,
+        )
+
+    @classmethod
+    def set_default_config_directory(
+        cls,
+        path: str | pathlib.Path,
+    ) -> None:
+        """Set the default directory used by all configurations."""
+        directory = pathlib.Path(
+            path
+        ).expanduser().resolve()
+
+        if directory.exists() and not directory.is_dir():
+            raise ValueError(
+                "The default configuration path must refer "
+                f"to a directory: {directory}"
+            )
+
+        ConfigBase._default_config_directory = directory
+
+    @classmethod
+    def clear_default_config_directory(cls) -> None:
+        """Remove the globally configured default directory."""
+        ConfigBase._default_config_directory = None
+
+    @classmethod
+    def default_config_directory(cls) -> pathlib.Path:
+        """Return the explicitly configured default directory."""
+        directory = ConfigBase._default_config_directory
+
+        if directory is None:
+            raise RuntimeError(
+                "No default configuration directory has been set. "
+                "Call ConfigBase.set_default_config_directory(...) "
+                "or provide config_path when constructing the config."
+            )
+
+        return directory
 
     def __setattr__(
         self,
         name: str,
         value: Any,
     ) -> None:
-        """
-        Prevent namespace mutation after construction.
-        """
+        """Prevent namespace mutation after construction."""
         if name == "_namespace":
             private_attributes = getattr(
                 self,
@@ -178,45 +185,33 @@ class ConfigBase(ABC, BaseModel):
 
     @property
     def namespace(self) -> str:
-        """
-        Return the namespace identifying this configuration.
-        """
+        """Return the configuration namespace."""
         return self._namespace
 
     @property
     def mode(self) -> ConfigMode:
-        """
-        Return the persistence mode of this configuration.
-        """
+        """Return the configuration persistence mode."""
         return self._mode
 
     @property
     def config_path(self) -> pathlib.Path:
-        """
-        Return the resolved runtime configuration file.
-        """
+        """Return the resolved runtime configuration file."""
         return self._config_path
 
     @property
     def config_filename(self) -> str:
-        """
-        Return the configuration filename derived from the namespace.
-        """
+        """Return the filename derived from the namespace."""
         return f"{self.namespace}.json"
 
     def __eq__(self, other: object) -> bool:
-        """
-        Compare configurations by namespace.
-        """
+        """Compare configurations by namespace."""
         if not isinstance(other, ConfigBase):
             return NotImplemented
 
         return self.namespace == other.namespace
 
     def __hash__(self) -> int:
-        """
-        Hash the immutable configuration namespace.
-        """
+        """Hash the immutable configuration namespace."""
         return hash(self.namespace)
 
     @classmethod
@@ -224,12 +219,10 @@ class ConfigBase(ABC, BaseModel):
         cls,
         **kwargs: Any,
     ) -> None:
-        """
-        Validate the default namespace of concrete subclasses.
-        """
+        """Validate the default namespace of concrete subclasses."""
         super().__pydantic_init_subclass__(**kwargs)
 
-        if inspect.isabstract(cls):
+        if getattr(cls, "__abstractmethods__", None):
             return
 
         cls._validate_namespace(
@@ -239,9 +232,7 @@ class ConfigBase(ABC, BaseModel):
     @classmethod
     @abstractmethod
     def _default_namespace(cls) -> str:
-        """
-        Return the default namespace for this configuration type.
-        """
+        """Return the default namespace for this config type."""
         raise NotImplementedError
 
     @classmethod
@@ -249,9 +240,7 @@ class ConfigBase(ABC, BaseModel):
         cls,
         namespace: str,
     ) -> str:
-        """
-        Validate and normalize a filesystem-safe namespace.
-        """
+        """Validate and normalize a filesystem-safe namespace."""
         if not isinstance(namespace, str):
             raise TypeError(
                 "The configuration namespace must be a string."
@@ -267,15 +256,15 @@ class ConfigBase(ABC, BaseModel):
         if not cls._NAMESPACE_PATTERN.fullmatch(normalized):
             raise ValueError(
                 f"Invalid configuration namespace {namespace!r}. "
-                "Namespaces must begin with an alphanumeric character "
-                "and may contain only letters, numbers, periods, "
-                "underscores, and hyphens."
+                "Namespaces must begin with an alphanumeric "
+                "character and may contain only letters, numbers, "
+                "periods, underscores, and hyphens."
             )
 
         if normalized.upper() in cls._WINDOWS_RESERVED_NAMES:
             raise ValueError(
-                f"Configuration namespace {normalized!r} is reserved "
-                "as a filename on Windows."
+                f"Configuration namespace {normalized!r} is "
+                "reserved as a filename on Windows."
             )
 
         return normalized
@@ -286,141 +275,95 @@ class ConfigBase(ABC, BaseModel):
         mode: ConfigMode,
         config_path: str | pathlib.Path | None,
     ) -> pathlib.Path:
-        """
-        Resolve the runtime configuration file for this instance.
-        """
+        """Resolve the runtime configuration file."""
         match mode:
             case ConfigMode.UNIFIED_CONFIG:
-                target = pathlib.Path(
+                return self._resolve_unified_config_path(
                     config_path
-                    if config_path is not None
-                    else pathlib.Path.cwd()
-                    / "configurations.json"
-                ).expanduser().resolve()
-
-                if target.exists() and target.is_dir():
-                    raise ValueError(
-                        "In UNIFIED_CONFIG mode, config_path must refer "
-                        f"to a file, not a directory: {target}"
-                    )
-
-                return target
+                )
 
             case ConfigMode.CONFIG_PER_FEATURE:
-                directory = pathlib.Path(
+                return self._resolve_per_feature_config_path(
                     config_path
-                    if config_path is not None
-                    else type(self)._config_resources_directory()
-                ).expanduser().resolve()
-
-                if directory.exists() and not directory.is_dir():
-                    raise ValueError(
-                        "In CONFIG_PER_FEATURE mode, config_path must "
-                        f"refer to a directory, not a file: {directory}"
-                    )
-
-                return directory / self.config_filename
+                )
 
             case _:
                 raise ValueError(
                     f"Unknown config mode: {mode}"
                 )
 
-    @classmethod
-    def _package_root(cls) -> pathlib.Path:
-        """
-        Return the package root containing the concrete config class.
+    def _resolve_unified_config_path(
+        self,
+        config_path: str | pathlib.Path | None,
+    ) -> pathlib.Path:
+        """Resolve the unified JSON configuration file."""
+        if config_path is None:
+            target = (
+                type(self).default_config_directory()
+                / self._unified_config_filename
+            )
+        else:
+            target = pathlib.Path(config_path)
 
-        Supported layout::
+        target = target.expanduser().resolve()
 
-            package-root/
-            ├── pyproject.toml
-            ├── src/
-            │   └── ...
-            └── tests/
-                └── ...
-        """
-        if cls._package_root_override is not None:
-            root = (
-                cls._package_root_override
-                .expanduser()
-                .resolve()
+        if target.exists() and target.is_dir():
+            raise ValueError(
+                "In UNIFIED_CONFIG mode, config_path must "
+                f"refer to a file, not a directory: {target}"
             )
 
-            if not root.is_dir():
-                raise RuntimeError(
-                    f"The package-root override does not exist: {root}"
-                )
+        return target
 
-            return root
+    def _resolve_per_feature_config_path(
+        self,
+        config_path: str | pathlib.Path | None,
+    ) -> pathlib.Path:
+        """Resolve the per-feature JSON configuration file."""
+        if config_path is None:
+            directory = type(
+                self
+            ).default_config_directory()
+        else:
+            directory = pathlib.Path(config_path)
 
-        source_file = pathlib.Path(
-            inspect.getfile(cls)
-        ).resolve()
+        directory = directory.expanduser().resolve()
 
-        for candidate in source_file.parents:
-            if not (
-                candidate / "pyproject.toml"
-            ).is_file():
-                continue
-
-            possible_source_roots = (
-                candidate / "src",
-                candidate / "tests",
+        if directory.exists() and not directory.is_dir():
+            raise ValueError(
+                "In CONFIG_PER_FEATURE mode, config_path must "
+                f"refer to a directory, not a file: {directory}"
             )
 
-            belongs_to_candidate = any(
-                root.is_dir()
-                and source_file.is_relative_to(root)
-                for root in possible_source_roots
-            )
+        return directory / self.config_filename
 
-            if belongs_to_candidate:
-                return candidate
+    def _config_path_argument(self) -> pathlib.Path:
+        """Return config_path in constructor form."""
+        if self.mode == ConfigMode.UNIFIED_CONFIG:
+            return self.config_path
 
-        raise RuntimeError(
-            f"Could not determine the package root for "
-            f"{cls.__module__}.{cls.__qualname__}. "
-            f"Searched upward from {source_file} for a directory "
-            f"containing pyproject.toml and either src/ or tests/."
-        )
+        return self.config_path.parent
 
-    @classmethod
-    def _config_resources_directory(cls) -> pathlib.Path:
-        """
-        Return the package's configuration resource directory.
-        """
-        return (
-            cls._package_root()
-            / "resources"
-            / "config"
-        )
+    def _artifact_directory(self) -> pathlib.Path:
+        """Return the explicit artifact output directory."""
+        return self.config_path.parent
 
     def _template_path(self) -> pathlib.Path:
-        """
-        Return the template path derived from the config filename.
-        """
+        """Return the generated template path."""
         return (
-            type(self)._config_resources_directory()
+            self._artifact_directory()
             / f"template_{self.config_filename}"
         )
 
     def _schema_path(self) -> pathlib.Path:
-        """
-        Return the schema path derived from the config filename.
-        """
+        """Return the generated schema path."""
         return (
-            type(self)._config_resources_directory()
+            self._artifact_directory()
             / f"schema_{self.config_filename}"
         )
 
     def generate_config_artifacts(self) -> None:
-        """
-        Generate the default template and JSON schema for this namespace.
-
-        The template contains the model's default values rather than the
-        current instance values.
-        """
+        """Generate the default template and JSON schema."""
         required_fields = [
             name
             for name, field in type(self).model_fields.items()
@@ -430,13 +373,16 @@ class ConfigBase(ABC, BaseModel):
         if required_fields:
             raise TypeError(
                 f"Cannot generate a default template for "
-                f"{type(self).__module__}.{type(self).__qualname__}. "
-                f"The following fields have no default value: "
+                f"{type(self).__module__}."
+                f"{type(self).__qualname__}. "
+                "The following fields have no default value: "
                 f"{', '.join(required_fields)}."
             )
 
         default_config = type(self)(
             namespace=self.namespace,
+            mode=self.mode,
+            config_path=self._config_path_argument(),
             generate_artifacts=False,
         )
 
@@ -454,16 +400,13 @@ class ConfigBase(ABC, BaseModel):
             target=self._template_path(),
             data=template,
         )
-
         self._write_json_atomic(
             target=self._schema_path(),
             data=schema,
         )
 
     def persist(self) -> None:
-        """
-        Persist the complete current model state.
-        """
+        """Persist the complete current model state."""
         if self._artifacts_enabled:
             self.generate_config_artifacts()
 
@@ -473,22 +416,22 @@ class ConfigBase(ABC, BaseModel):
             exclude_computed_fields=True,
         )
 
-        match self._mode:
+        match self.mode:
             case ConfigMode.UNIFIED_CONFIG:
                 self._persist_unified(
-                    target=self._config_path,
+                    target=self.config_path,
                     config_data=config_data,
                 )
 
             case ConfigMode.CONFIG_PER_FEATURE:
                 self._write_json_atomic(
-                    target=self._config_path,
+                    target=self.config_path,
                     data=config_data,
                 )
 
             case _:
                 raise ValueError(
-                    f"Unknown config mode: {self._mode}"
+                    f"Unknown config mode: {self.mode}"
                 )
 
     def _persist_unified(
@@ -497,9 +440,7 @@ class ConfigBase(ABC, BaseModel):
         target: pathlib.Path,
         config_data: dict[str, Any],
     ) -> None:
-        """
-        Replace this namespace in the unified configuration document.
-        """
+        """Replace this namespace in the unified document."""
         with ConfigBase._unified_config_lock:
             document = self._read_json_object(
                 source=target,
@@ -514,38 +455,39 @@ class ConfigBase(ABC, BaseModel):
             )
 
     def load(self) -> Self:
-        """
-        Load and validate this configuration in place.
-        """
+        """Load and validate this configuration in place."""
         if self._artifacts_enabled:
             self.generate_config_artifacts()
 
-        match self._mode:
+        match self.mode:
             case ConfigMode.UNIFIED_CONFIG:
-                validated = self._load_unified(
-                    self._config_path
+                config_data = self._load_unified_data(
+                    self.config_path
                 )
 
             case ConfigMode.CONFIG_PER_FEATURE:
-                validated = type(self).model_validate_json(
-                    self._config_path.read_bytes()
+                config_data = self._read_json_object(
+                    source=self.config_path,
+                    missing_ok=False,
                 )
 
             case _:
                 raise ValueError(
-                    f"Unknown config mode: {self._mode}"
+                    f"Unknown config mode: {self.mode}"
                 )
+
+        validated = self._validate_config_data(
+            config_data
+        )
 
         self._replace_state(validated)
         return self
 
-    def _load_unified(
+    def _load_unified_data(
         self,
         source: pathlib.Path,
-    ) -> Self:
-        """
-        Load this namespace from a unified configuration document.
-        """
+    ) -> dict[str, Any]:
+        """Load this namespace from a unified document."""
         document = self._read_json_object(
             source=source,
             missing_ok=False,
@@ -565,7 +507,20 @@ class ConfigBase(ABC, BaseModel):
                 f"in {source} must contain a JSON object."
             )
 
-        return type(self).model_validate(config_data)
+        return config_data
+
+    def _validate_config_data(
+        self,
+        config_data: dict[str, Any],
+    ) -> Self:
+        """Construct a validated config using current metadata."""
+        return type(self)(
+            namespace=self.namespace,
+            mode=self.mode,
+            config_path=self._config_path_argument(),
+            generate_artifacts=False,
+            **config_data,
+        )
 
     @staticmethod
     def _read_json_object(
@@ -573,9 +528,7 @@ class ConfigBase(ABC, BaseModel):
         source: pathlib.Path,
         missing_ok: bool,
     ) -> dict[str, Any]:
-        """
-        Read a JSON document whose root must be an object.
-        """
+        """Read a JSON document whose root must be an object."""
         if not source.exists():
             if missing_ok:
                 return {}
@@ -604,9 +557,7 @@ class ConfigBase(ABC, BaseModel):
         target: pathlib.Path,
         data: Any,
     ) -> None:
-        """
-        Write JSON through a temporary file and replace the target.
-        """
+        """Write JSON atomically."""
         target.parent.mkdir(
             parents=True,
             exist_ok=True,
@@ -635,9 +586,7 @@ class ConfigBase(ABC, BaseModel):
         self,
         validated: Self,
     ) -> None:
-        """
-        Replace validated model fields while preserving instance metadata.
-        """
+        """Replace model fields while preserving config metadata."""
         if type(validated) is not type(self):
             raise TypeError(
                 f"Cannot load {type(validated).__name__} "
