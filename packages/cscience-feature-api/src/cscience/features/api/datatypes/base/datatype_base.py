@@ -1,9 +1,12 @@
 from abc import ABC
 from typing import Generic, TypeVar
+import icontract
 
 T = TypeVar("T")
 
 
+
+@icontract.invariant(lambda self: self._data is not None, "Data cannot be None.")
 class DatatypeBase(ABC, Generic[T]):
     """Base class for all semantic feature datatypes.
 
@@ -23,6 +26,8 @@ class DatatypeBase(ABC, Generic[T]):
     def fullname(o: object) -> str:
         """Return the fully qualified class name of an object."""
         module = o.__class__.__module__
+
         if module is None or module == str.__class__.__module__:
             return o.__class__.__name__
+
         return module + "." + o.__class__.__name__

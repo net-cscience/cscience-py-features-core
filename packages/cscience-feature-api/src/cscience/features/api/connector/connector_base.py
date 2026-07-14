@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
 
-from ..config.config_base import ConfigBase
 from ..config.core_config import CoreConfig
 from ..conversion.conversion_provider_base import ConversionProviderBase
-from ..datatypes.core_conversion_provider import CoreConversionProvider
+from cscience.features.api.conversion.core_conversion_provider import CoreConversionProvider
 from ..feature.core_feature import CoreFeature
 from ..feature.feature_info import FeatureInfo
 from ..feature.service_info import ServiceInfo

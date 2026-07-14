@@ -17,7 +17,7 @@ from .asr_whisper_datatypes.whisper_transcription import (
 
 
 
-class AsrWhisperFeature(FeatureBase['AsrWhisperFeature',AsrConfig]):
+class AsrWhisperFeature(FeatureBase['AsrWhisperFeature', AsrConfig]):
     """Whisper ASR feature service.
 
     Loads the Whisper model once and transcribes decoded mono audio signals.

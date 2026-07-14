@@ -35,12 +35,10 @@ class AsrConfig(ConfigBase):
         description="The name of the ASR model to use."
     )
 
-
     preferred_device:str = Field(
         default="cuda",
         description="The device to use for inference."
     )
-
 
     force_device:bool = Field(
         default=False,

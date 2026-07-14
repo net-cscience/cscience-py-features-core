@@ -1,12 +1,12 @@
-from dataclasses import dataclass
-
 import numpy as np
 
 from .asr_whisper_datatype import AsrWhisperDatatype
 from .audio_signal_data import AudioSignalData
 
 
-class AudioSignal(AsrWhisperDatatype[AudioSignalData]):
+class AudioSignal(
+    AsrWhisperDatatype[AudioSignalData],
+):
     """Whisper-ready mono float32 audio signal at 16 kHz."""
 
     EXPECTED_SAMPLE_RATE = 16_000
@@ -14,28 +14,39 @@ class AudioSignal(AsrWhisperDatatype[AudioSignalData]):
     def __init__(self, data: AudioSignalData) -> None:
         if not isinstance(data, AudioSignalData):
             raise TypeError(
-                f"AudioSignal expects AudioSignalData, got {type(data).__name__}."
+                f"AudioSignal expects AudioSignalData, "
+                f"got {type(data).__name__}."
             )
 
-        if not isinstance(data.waveform, np.ndarray):
+        waveform = data.waveform
+
+        if not isinstance(waveform, np.ndarray):
             raise TypeError(
                 f"AudioSignal waveform expects np.ndarray, "
-                f"got {type(data.waveform).__name__}."
+                f"got {type(waveform).__name__}."
             )
 
-        if data.waveform.ndim != 1:
+        if waveform.ndim != 1:
             raise ValueError(
-                f"AudioSignal expects mono 1D waveform, got shape {data.waveform.shape}."
+                "AudioSignal expects a mono 1D waveform, "
+                f"got shape {waveform.shape}."
             )
 
-        if data.waveform.dtype != np.float32:
+        if waveform.size == 0:
+            raise ValueError(
+                "AudioSignal waveform cannot be empty."
+            )
+
+        if waveform.dtype != np.float32:
             raise TypeError(
-                f"AudioSignal expects float32 waveform, got {data.waveform.dtype}."
+                "AudioSignal expects a float32 waveform, "
+                f"got {waveform.dtype}."
             )
 
         if type(data.sample_rate) is not int:
             raise TypeError(
-                f"AudioSignal sample_rate expects int, got {type(data.sample_rate).__name__}."
+                f"AudioSignal sample_rate expects int, "
+                f"got {type(data.sample_rate).__name__}."
             )
 
         if data.sample_rate != self.EXPECTED_SAMPLE_RATE:

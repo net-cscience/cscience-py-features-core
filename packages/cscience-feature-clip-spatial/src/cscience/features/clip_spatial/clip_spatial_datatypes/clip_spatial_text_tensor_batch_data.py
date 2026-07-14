@@ -5,10 +5,10 @@ from torch import Tensor
 
 @dataclass(frozen=True, slots=True)
 class ClipSpatialTextTensorBatchData:
-    """CLIP tensor batch with stable source keys.
+    """Packed CLIP text embedding batch with stable source keys.
 
-    vectors has shape [n, d].
-    keys maps row positions back to source batch indices.
+    vectors has shape [N, D].
+    keys maps tensor rows back to TextBatch source keys.
     """
 
     keys: tuple[int, ...]

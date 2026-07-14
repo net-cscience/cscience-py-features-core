@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from cscience.features.api.datatypes.base.core_datatype import CoreDatatype
+from cscience.features.api.datatypes.core.core_datatype import (
+    CoreDatatype,
+)
 
 
 class FilePath(CoreDatatype[Path]):
@@ -12,14 +14,15 @@ class FilePath(CoreDatatype[Path]):
 
     def __init__(self, data: str | Path) -> None:
         if not isinstance(data, str | Path):
-            raise TypeError(f"FilePath expects str or Path, got {type(data).__name__}.")
+            raise TypeError(
+                f"FilePath expects str or Path, "
+                f"got {type(data).__name__}."
+            )
 
-        path = Path(data)
-
-        if not str(path):
+        if isinstance(data, str) and data == "":
             raise ValueError("FilePath cannot be empty.")
 
-        super().__init__(path)
+        super().__init__(Path(data))
 
     def exists(self) -> bool:
         """Return whether the referenced path currently exists."""

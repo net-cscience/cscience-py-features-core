@@ -1,4 +1,4 @@
-from cscience.features.api.datatypes.base.core_datatype import CoreDatatype
+from cscience.features.api.datatypes.core.core_datatype import CoreDatatype
 
 
 class IntValue(CoreDatatype[int]):

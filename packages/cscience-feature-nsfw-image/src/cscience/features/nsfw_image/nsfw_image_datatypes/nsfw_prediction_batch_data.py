@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from ..nsfw_image_datatypes.nsfw_prediction import NsfwPredictionData
+from .nsfw_prediction import NsfwPredictionData
 
 
 @dataclass(frozen=True, slots=True)

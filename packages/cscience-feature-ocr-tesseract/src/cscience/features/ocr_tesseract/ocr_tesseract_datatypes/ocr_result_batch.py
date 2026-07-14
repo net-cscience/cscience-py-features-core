@@ -1,52 +1,42 @@
 from collections.abc import Mapping
-from dataclasses import dataclass
 
 from cscience.features.api import BatchBase
+
+from .ocr_result import OcrResult
 from .ocr_result_batch_data import OcrResultBatchData
-
+from .ocr_result_data import OcrResultData
 from .ocr_tesseract_datatype import OcrTesseractDatatype
-from .ocr_result import OcrResultData
 
 
-
-
-
-class OcrResultBatch(OcrTesseractDatatype, BatchBase[OcrResultData]):
+class OcrResultBatch(
+    BatchBase[OcrResultData],
+    OcrTesseractDatatype[OcrResultBatchData],
+):
     """Batch of Tesseract OCR results."""
 
-    def __init__(self, data: OcrResultBatchData) -> None:
+    def __init__(
+        self,
+        data: OcrResultBatchData,
+    ) -> None:
         if not isinstance(data, OcrResultBatchData):
             raise TypeError(
-                f"OcrResultBatch expects OcrResultBatchData, got {type(data).__name__}."
+                f"OcrResultBatch expects OcrResultBatchData, "
+                f"got {type(data).__name__}."
             )
 
         self._validate_batch_mapping(data.results)
 
-        for key, result in data.results.items():
-            if not isinstance(result, OcrResultData):
-                raise TypeError(
-                    f"OcrResultBatch expects OcrResultData values, "
-                    f"got {type(result).__name__} at key {key}."
-                )
+        for result in data.results.values():
+            OcrResult.validate_data(result)
 
-        super().__init__(
-            OcrResultBatchData(
-                results=dict(data.results)
-            )
+        normalized = OcrResultBatchData(
+            results=dict(data.results),
         )
 
-    def batch_size(self) -> int:
-        """Return the number of OCR results."""
-        return len(self.data().results)
+        super().__init__(normalized)
 
-    def ordered_keys(self) -> tuple[int, ...]:
-        """Return source indices in canonical order."""
-        return tuple(sorted(self.data().results.keys()))
-
-    def ordered_values(self) -> tuple[OcrResultData, ...]:
-        """Return OCR results in canonical source-index order."""
-        return tuple(self.data().results[key] for key in self.ordered_keys())
-
-    def ordered_items(self) -> tuple[tuple[int, OcrResultData], ...]:
-        """Return indexed OCR results in canonical source-index order."""
-        return tuple((key, self.data().results[key]) for key in self.ordered_keys())
+    def _batch_mapping(
+        self,
+    ) -> Mapping[int, OcrResultData]:
+        """Return OCR results indexed by source image position."""
+        return self.data().results

@@ -1,11 +1,16 @@
 from abc import ABC
-from typing import TypeVar, Generic
+from typing import Generic, TypeVar
 
 from cscience.features.api import DatatypeBase
 
 T = TypeVar("T")
 
-class AsrWhisperDatatype(DatatypeBase[T],  ABC, Generic[T]):
-    """Base class for Whisper ASR-specific datatypes."""
+
+class AsrWhisperDatatype(
+    DatatypeBase[T],
+    ABC,
+    Generic[T],
+):
+    """Namespace base for Whisper ASR-specific datatypes."""
 
     namespace = "asr_whisper"

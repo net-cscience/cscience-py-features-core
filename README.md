@@ -29,9 +29,88 @@ packages/
       clip_config.py   # Config schema only; loading is deferred
 ```
 
+## Other Feature Packages
+
+Clip: [cscience-feature-clip/Readme.md](packages/cscience-feature-clip/Readme.md)
+NSFW Image: [cscience-feature-nsfw-image/Readme.md](packages/cscience-feature-nsfw-image/Readme.md)
+OCR Tesseract: [cscience-feature-ocr-tesseract/Readme.md](packages/cscience-feature-ocr-tesseract/Readme.md)
+
 ## Core Concepts
 
+
+
 ### Datatypes
+```mermaid
+classDiagram
+direction TB
+
+class DatatypeBase {
+    <<data owner>>
+    -_data
+    +data()
+}
+
+class CoreDatatype {
+    <<namespace>>
+    +namespace = "core"
+}
+
+class ClipDatatype {
+    <<namespace>>
+    +namespace = "clip"
+}
+
+class ArbitraryDatatype {
+    <<namespace>>
+    +namespace = "arbitrary"
+}
+
+DatatypeBase <|-- CoreDatatype
+DatatypeBase <|-- ClipDatatype
+DatatypeBase <|-- ArbitraryDatatype
+```
+```mermaid
+classDiagram
+direction TB
+
+class DatatypeBase {
+    <<data owner>>
+}
+
+class CoreDatatype {
+    <<namespace>>
+}
+
+class BatchBase {
+    <<structural mixin>>
+    #_batch_mapping()
+    +batch_size()
+    +ordered_keys()
+    +ordered_values()
+    +ordered_items()
+}
+
+class VectorBase {
+    <<structural mixin>>
+    +length()
+    +assert_length()
+}
+
+class VectorBatchBase {
+    <<structural mixin>>
+    +length()
+    +assert_length()
+}
+
+class EmbeddingBase {
+    <<semantic mixin>>
+    +length()*
+    +embedding_dim()
+}
+
+DatatypeBase <|-- CoreDatatype
+BatchBase <|-- VectorBatchBase
+```
 
 All data passed through the feature system is wrapped in explicit datatype classes.
 

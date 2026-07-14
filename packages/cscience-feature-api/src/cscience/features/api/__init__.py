@@ -12,18 +12,18 @@ from .conversion.search_strategy_base import SearchStrategyBase
 from .conversion.search_strategy_most_specific import SearchStrategyMostSpecific
 
 # Datatype conversion provider
-from .datatypes.core_conversion_provider import CoreConversionProvider
+from cscience.features.api.conversion.core_conversion_provider import CoreConversionProvider
 
 # Datatype base classes
-from .datatypes.base.audio_bytes_base import AudioBytesBase
-from .datatypes.base.batch_base import BatchBase
-from .datatypes.base.core_datatype import CoreDatatype
+from cscience.features.api.datatypes.base.media.audio_bytes_base import AudioBytesBase
+from cscience.features.api.datatypes.base.structural.batch_base import BatchBase
+from cscience.features.api.datatypes.core.core_datatype import CoreDatatype
 from .datatypes.base.datatype_base import DatatypeBase
-from .datatypes.base.embedding_base import EmbeddingBase
-from .datatypes.base.image_bytes_base import ImageBytesBase
-from .datatypes.base.media_bytes_base import MediaBytesBase
-from .datatypes.base.vector_base import VectorBase
-from .datatypes.base.vector_batch_base import VectorBatchBase
+from cscience.features.api.datatypes.base.structural.embedding_base import EmbeddingBase
+from cscience.features.api.datatypes.base.media.image_bytes_base import ImageBytesBase
+from cscience.features.api.datatypes.base.media.media_bytes_base import MediaBytesBase
+from cscience.features.api.datatypes.base.structural.vector_base import VectorBase
+from cscience.features.api.datatypes.base.structural.vector_batch_base import VectorBatchBase
 
 # Datatype references
 from .datatypes.references.data_url import DataUrl
@@ -32,9 +32,9 @@ from .datatypes.references.file_path import FilePath
 # Spa
 from .datatypes.spatial.spatial_batch_layout import SpatialBatchLayout
 from .datatypes.spatial.spatial_region import SpatialRegion
-from .datatypes.spatial.spatial_vector_batch_data import SpatialVectorBatchData
-from .datatypes.spatial.spatial_vector_batch_base import SpatialVectorBatchBase
-from .datatypes.spatial.spatial_primitive_vector_batch_base import SpatialPrimitiveVectorBatchBase
+from cscience.features.api.datatypes.base.structural.spatial_vector_batch_data import SpatialVectorBatchData
+from cscience.features.api.datatypes.base.structural.spatial_vector_batch_base import SpatialVectorBatchBase
+from cscience.features.api.datatypes.base.structural.spatial_primitive_vector_batch_base import SpatialPrimitiveVectorBatchBase
 from .datatypes.spatial.spatial_float_vector_batch import SpatialFloatVectorBatch
 
 # Text datatypes
@@ -58,13 +58,13 @@ from .datatypes.primitives_scalar.int_value import IntValue
 
 # Primitive vector datatypes
 from .datatypes.primitives_vectors.bool_vector import BoolVector
-from .datatypes.primitives_vectors.bool_vector_batch import BoolVectorBatch
+from cscience.features.api.datatypes.primitives_vectors_batch.bool_vector_batch import BoolVectorBatch
 from .datatypes.primitives_vectors.float_vector import FloatVector
-from .datatypes.primitives_vectors.float_vector_batch import FloatVectorBatch
+from cscience.features.api.datatypes.primitives_vectors_batch.float_vector_batch import FloatVectorBatch
 from .datatypes.primitives_vectors.int_vector import IntVector
-from .datatypes.primitives_vectors.int_vector_batch import IntVectorBatch
-from .datatypes.primitives_vectors.primitive_vector_base import PrimitiveVectorBase
-from .datatypes.primitives_vectors.primitive_vector_batch_base import PrimitiveVectorBatchBase
+from cscience.features.api.datatypes.primitives_vectors_batch.int_vector_batch import IntVectorBatch
+from cscience.features.api.datatypes.base.structural.primitive_vector_base import PrimitiveVectorBase
+from cscience.features.api.datatypes.base.structural.primitive_vector_batch_base import PrimitiveVectorBatchBase
 
 # Features
 from .feature.feature_base import FeatureBase

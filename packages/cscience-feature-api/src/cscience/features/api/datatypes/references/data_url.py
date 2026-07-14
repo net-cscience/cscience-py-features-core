@@ -1,7 +1,11 @@
-from cscience.features.api.datatypes.base.core_datatype import CoreDatatype
+from cscience.features.api.datatypes.base.references.data_url_base import DataUrlBase
+from cscience.features.api.datatypes.core.core_datatype import CoreDatatype
 
 
-class DataUrl(CoreDatatype[str]):
+class DataUrl(
+    DataUrlBase,
+    CoreDatatype[str],
+):
     """Generic data URL reference.
 
     A DataUrl stores a string such as:
@@ -53,4 +57,6 @@ class DataUrl(CoreDatatype[str]):
 
     def is_base64(self) -> bool:
         """Return whether the data URL declares base64 encoding."""
-        return ";base64" in self.header()
+        parameters = self.header().split(";")[1:]
+
+        return "base64" in parameters

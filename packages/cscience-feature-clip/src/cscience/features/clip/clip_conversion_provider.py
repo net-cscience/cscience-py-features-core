@@ -3,7 +3,7 @@ from typing import List
 from cscience.features.api.conversion.conversion_provider_base import ConversionProviderBase
 from cscience.features.api.conversion.converter import Converter
 from cscience.features.api.datatypes.primitives_vectors.float_vector import FloatVector
-from cscience.features.api.datatypes.primitives_vectors.float_vector_batch import FloatVectorBatch
+from cscience.features.api.datatypes.primitives_vectors_batch.float_vector_batch import FloatVectorBatch
 from cscience.features.api.feature.feature_base import FeatureBase
 
 from .clip_datatypes.clip_tensor_batch import ClipTensorBatch

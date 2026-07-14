@@ -5,7 +5,7 @@ from cscience.features.api.connector.function_connector import FunctionConnector
 from cscience.features.api.datatypes.image.pil_image import PilImage
 from cscience.features.api.datatypes.image.pil_image_batch import PilImageBatch
 from cscience.features.api.datatypes.primitives_vectors.float_vector import FloatVector
-from cscience.features.api.datatypes.primitives_vectors.float_vector_batch import FloatVectorBatch
+from cscience.features.api.datatypes.primitives_vectors_batch.float_vector_batch import FloatVectorBatch
 from cscience.features.api.datatypes.text.text import Text
 from cscience.features.api.datatypes.text.text_batch import TextBatch
 from cscience.features.api.feature.feature_info import FeatureInfo

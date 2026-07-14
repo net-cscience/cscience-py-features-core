@@ -1,33 +1,47 @@
 from collections.abc import Mapping
-from dataclasses import dataclass
 
 from cscience.features.api import BatchBase
-from .nsfw_prediction_batch_data import NsfwPredictionBatchData
 
-from ..nsfw_image_datatypes.nsfw_image_datatype import NsfwImageDatatype
-from .nsfw_prediction import NsfwPredictionData
+from .nsfw_image_datatype import NsfwImageDatatype
+from .nsfw_prediction import (
+    NsfwPrediction,
+    NsfwPredictionData,
+)
+from .nsfw_prediction_batch_data import (
+    NsfwPredictionBatchData,
+)
 
 
-
-class NsfwPredictionBatch(NsfwImageDatatype, BatchBase[NsfwPredictionData]):
+class NsfwPredictionBatch(
+    BatchBase[NsfwPredictionData],
+    NsfwImageDatatype[NsfwPredictionBatchData],
+):
     """Batch of NSFW classification results."""
 
-    def __init__(self, data: NsfwPredictionBatchData) -> None:
+    def __init__(
+        self,
+        data: NsfwPredictionBatchData,
+    ) -> None:
+        if not isinstance(data, NsfwPredictionBatchData):
+            raise TypeError(
+                "NsfwPredictionBatch expects "
+                f"NsfwPredictionBatchData, "
+                f"got {type(data).__name__}."
+            )
+
         self._validate_batch_mapping(data.predictions)
 
-        for key, prediction in data.predictions.items():
-            if not isinstance(prediction, NsfwPredictionData):
-                raise TypeError(
-                    f"NsfwPredictionBatch expects NsfwPredictionData values, "
-                    f"got {type(prediction).__name__} at key {key}."
-                )
+        for prediction in data.predictions.values():
+            NsfwPrediction.validate_data(prediction)
 
-        super().__init__(
-            NsfwPredictionBatchData(
-                predictions=dict(data.predictions)
-            )
+        normalized = NsfwPredictionBatchData(
+            predictions=dict(data.predictions),
         )
 
-    def batch_size(self) -> int:
-        """Return the number of predictions."""
-        return len(self.data().predictions)
+        super().__init__(normalized)
+
+    def _batch_mapping(
+        self,
+    ) -> Mapping[int, NsfwPredictionData]:
+        """Return predictions indexed by source image position."""
+        return self.data().predictions

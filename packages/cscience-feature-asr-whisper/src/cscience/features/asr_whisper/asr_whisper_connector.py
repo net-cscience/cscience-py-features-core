@@ -21,9 +21,9 @@ from .asr_whisper_feature import AsrWhisperFeature
 class AsrWhisperConnector(ConnectorBase):
     """Public connector for Whisper ASR."""
 
-    def __init__(self) -> None:
-        self.feature = AsrWhisperFeature.get_instance(AsrConfig())
-        super().__init__( AsrWhisperConversionProvider(self.feature))
+    def __init__(self, config: AsrConfig) -> None:
+        self.feature = AsrWhisperFeature.get_instance(config)
+        super().__init__(AsrWhisperConversionProvider(self.feature))
 
     def transcribe_audio_bytes(self, data: bytes) -> WhisperTranscriptionData:
         """Transcribe encoded audio bytes and return the structured result."""

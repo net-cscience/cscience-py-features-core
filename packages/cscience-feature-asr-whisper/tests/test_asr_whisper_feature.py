@@ -8,6 +8,7 @@ import soundfile as sf
 
 from cscience.features.asr_whisper import AsrWhisperConnector
 from cscience.features.asr_whisper import AudioBytes
+from cscience.features.asr_whisper.asr_config import AsrConfig
 from cscience.features.asr_whisper.asr_whisper_conversion_provider import (
     audio_bytes_to_audio_signal,
 )
@@ -43,7 +44,7 @@ class AsrWhispernTest(unittest.TestCase):
 
 
     def test_connector_initializes(self):
-        connector = AsrWhisperConnector()
+        connector = AsrWhisperConnector(AsrConfig())
         self.assertIsNotNone(connector)
 
     def test_audio_bytes_to_audio_signal_resamples_to_16khz(self):
@@ -59,6 +60,6 @@ class AsrWhispernTest(unittest.TestCase):
         for fixture in self.fixtures:
             audio_bytes = fixture.audio_bytes
             expected_keywords = fixture.contains
-            text = AsrWhisperConnector().audio_bytes(audio_bytes)
+            text = AsrWhisperConnector(AsrConfig()).audio_bytes(audio_bytes)
             for keyword in expected_keywords:
                 self.assertIn(keyword, text.lower(), f"Expected keyword '{keyword}' not found in transcription '{text}' for fixture '{fixture.id}'")

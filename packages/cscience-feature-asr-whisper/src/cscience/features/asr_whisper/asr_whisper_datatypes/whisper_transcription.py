@@ -13,30 +13,40 @@ class WhisperTranscriptionData:
     segments: list[dict[str, Any]]
 
 
-class WhisperTranscription(AsrWhisperDatatype):
+class WhisperTranscription(
+    AsrWhisperDatatype[WhisperTranscriptionData],
+):
     """Whisper transcription output."""
 
-    def __init__(self, data: WhisperTranscriptionData) -> None:
+    def __init__(
+        self,
+        data: WhisperTranscriptionData,
+    ) -> None:
         if not isinstance(data, WhisperTranscriptionData):
             raise TypeError(
-                f"WhisperTranscription expects WhisperTranscriptionData, "
+                "WhisperTranscription expects "
+                f"WhisperTranscriptionData, "
                 f"got {type(data).__name__}."
             )
 
         if type(data.text) is not str:
             raise TypeError(
-                f"WhisperTranscriptionData.text expects str, got {type(data.text).__name__}."
+                "WhisperTranscriptionData.text expects str, "
+                f"got {type(data.text).__name__}."
             )
 
-        if data.language is not None and type(data.language) is not str:
+        if (
+            data.language is not None
+            and type(data.language) is not str
+        ):
             raise TypeError(
-                f"WhisperTranscriptionData.language expects str | None, "
-                f"got {type(data.language).__name__}."
+                "WhisperTranscriptionData.language expects "
+                f"str | None, got {type(data.language).__name__}."
             )
 
         if type(data.segments) is not list:
             raise TypeError(
-                f"WhisperTranscriptionData.segments expects list, "
+                "WhisperTranscriptionData.segments expects list, "
                 f"got {type(data.segments).__name__}."
             )
 

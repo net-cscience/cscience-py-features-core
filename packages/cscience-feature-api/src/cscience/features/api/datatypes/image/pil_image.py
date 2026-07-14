@@ -1,6 +1,6 @@
 from PIL.Image import Image
 
-from cscience.features.api.datatypes.base.core_datatype import CoreDatatype
+from cscience.features.api.datatypes.core.core_datatype import CoreDatatype
 
 
 class PilImage(CoreDatatype[Image]):
