@@ -37,6 +37,19 @@ class ClipConnector(ConnectorBase):
 
         return function(Text(data)).data()
 
+    def text_to_bytes(self, data: str) -> bytes:
+        """Embed a single text string and return one float vector."""
+        function = FunctionConnector(
+            feature=self.feature,
+            function=self.feature.text_batch,
+            input_type=Text,
+            input_feature_type=TextBatch,
+            output_feature_type=ClipTensorBatch,
+            output_type=FloatVector,
+        )
+
+        return function(Text(data)).data()
+
     def text_batch(self, data: list[str]) -> dict[int, list[float]]:
         """Embed text strings and return vectors indexed by input position."""
         text_batch = TextBatch(
@@ -45,7 +58,6 @@ class ClipConnector(ConnectorBase):
                 for index, text in enumerate(data)
             }
         )
-
         function = FunctionConnector(
             feature=self.feature,
             function=self.feature.text_batch,
@@ -58,6 +70,19 @@ class ClipConnector(ConnectorBase):
         return function(text_batch).data()
 
     def image(self, data: Image) -> list[float]:
+        """Embed a single image and return one float vector."""
+        function = FunctionConnector(
+            feature=self.feature,
+            function=self.feature.image_batch,
+            input_type=PilImage,
+            input_feature_type=PilImageBatch,
+            output_feature_type=ClipTensorBatch,
+            output_type=FloatVector,
+        )
+
+        return function(PilImage(data)).data()
+
+    def image_as_bytes(self, data: Image) -> bytes:
         """Embed a single image and return one float vector."""
         function = FunctionConnector(
             feature=self.feature,
