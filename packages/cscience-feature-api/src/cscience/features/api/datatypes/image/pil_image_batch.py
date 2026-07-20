@@ -1,29 +1,49 @@
 from collections.abc import Mapping
 
-from PIL.Image import Image
+from PIL import Image
 
 from cscience.features.api.datatypes.base.structural.batch_base import (
     BatchBase,
 )
+from cscience.features.api.datatypes.base.structural.vector_batch_base import VectorBatchBase
 from cscience.features.api.datatypes.core.core_datatype import (
     CoreDatatype,
 )
 
 
 class PilImageBatch(
-    BatchBase[Image],
-    CoreDatatype[dict[int, Image]],
+    VectorBatchBase[Image.Image],
+    CoreDatatype[dict[int, Image.Image]],
 ):
-    """Batch of Pillow images indexed by source position."""
+    def __init__(
+        self,
+        data: dict[int, Image.Image],
+        *,
+        require_same_size: bool = True,
+    ) -> None:
+        super().__init__(data)
 
-    def __init__(self, data: Mapping[int, Image]) -> None:
-        self._validate_batch_mapping(data)
+        self._require_same_size = require_same_size
 
-        for key, value in data.items():
-            if not isinstance(value, Image):
-                raise TypeError(
-                    f"PilImageBatch expects PIL images, "
-                    f"got {type(value).__name__} at key {key}."
-                )
+        if require_same_size:
+            self.same_size()
 
-        super().__init__(dict(data))
+    def same_size(
+        self,
+    ) -> tuple[int, int]:
+        sizes = {
+            image.size
+            for image in self.ordered_values()
+        }
+
+        if len(sizes) != 1:
+            raise ValueError(
+                "All images in PilImageBatch must have "
+                "the same dimensions."
+            )
+
+        return next(iter(sizes))
+
+    @property
+    def requires_same_size(self) -> bool:
+        return self._require_same_size

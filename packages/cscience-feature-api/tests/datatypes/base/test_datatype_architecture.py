@@ -152,6 +152,10 @@ def make_spatial_data() -> SpatialVectorBatchData[list[float]]:
             make_region(0),
             make_region(1),
         ),
+        base_vectors={
+            0: [0.0, 0.1],
+            1: [1.0, 1.1],
+        }
     )
 
 class TestNamespaceNeutrality(unittest.TestCase):

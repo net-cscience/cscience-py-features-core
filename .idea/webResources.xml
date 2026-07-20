@@ -56,6 +56,13 @@
           </resourceRoots>
         </entryData>
       </entry>
+      <entry url="file://$PROJECT_DIR$/project-maintenance">
+        <entryData>
+          <resourceRoots>
+            <path value="file://$PROJECT_DIR$/project-maintenance/src/templating/templates" />
+          </resourceRoots>
+        </entryData>
+      </entry>
     </contentEntries>
   </component>
 </project>

@@ -1,3 +1,5 @@
+import numpy as np
+
 from cscience.features.api import SpatialRegion
 
 from .geometry_provider import GeometryProvider
@@ -51,3 +53,26 @@ class SquareProvider(GeometryProvider):
             nx1=x1 / image_width,
             ny1=y1 / image_height,
         )
+
+    import numpy as np
+
+    from cscience.features.api import SpatialRegion
+
+    def create_mask(
+            self,
+            *,
+            region: SpatialRegion,
+            image_width: int,
+            image_height: int,
+    ) -> np.ndarray:
+        mask = np.zeros(
+            (image_height, image_width),
+            dtype=bool,
+        )
+
+        mask[
+            region.y0:region.y1,
+            region.x0:region.x1,
+        ] = True
+
+        return mask

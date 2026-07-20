@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 import torch
 
@@ -7,6 +8,8 @@ from cscience.features.api import (
     SpatialRegion,
     SpatialVectorBatchData,
 )
+from cscience.features.clip_spatial import ClipSpatialConnector
+from cscience.features.clip_spatial.clip_spatial_config import ClipSpatialConfig
 
 from cscience.features.clip_spatial.clip_spatial_datatypes.clip_spatial_tensor_batch import (
     ClipSpatialTensorBatch,
@@ -72,6 +75,10 @@ def make_spatial_vectors() -> ClipSpatialTensorBatch:
             ),
             item_keys=(10, 20),
             regions=make_regions(),
+            base_vectors={
+                10: torch.tensor([1.0, 0.0]),
+                20: torch.tensor([0.0, 1.0]),
+            }
         )
     )
 
@@ -89,10 +96,18 @@ def make_text_vectors() -> ClipSpatialTextTensorBatch:
         )
     )
 
+FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 
 class TestClipSpatialScoring(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        ClipSpatialConfig.set_default_config_directory(FIXTURE_DIR / "config")
+        cls.connector = ClipSpatialConnector(ClipSpatialConfig())
+
+
     def test_scores_queries_against_regions(self) -> None:
-        result = ClipSpatialFeature.score_embeddings(
+        result = self.connector.feature._score_embeddings(
             text_vectors=make_text_vectors(),
             spatial_vectors=make_spatial_vectors(),
         )
@@ -125,7 +140,7 @@ class TestClipSpatialScoring(unittest.TestCase):
     def test_preserves_spatial_metadata(self) -> None:
         spatial = make_spatial_vectors()
 
-        result = ClipSpatialFeature.score_embeddings(
+        result = self.connector.feature._score_embeddings(
             text_vectors=make_text_vectors(),
             spatial_vectors=spatial,
         )
@@ -147,7 +162,7 @@ class TestClipSpatialScoring(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            ClipSpatialFeature.score_embeddings(
+            self.connector.feature._score_embeddings(
                 text_vectors=text_vectors,
                 spatial_vectors=make_spatial_vectors(),
             )

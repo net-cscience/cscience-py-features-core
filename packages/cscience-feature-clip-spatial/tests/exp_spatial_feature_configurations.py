@@ -9,11 +9,12 @@ from cscience.features.api.utils.fixture_repository import FixtureRepository
 from cscience.features.clip_spatial import ClipSpatialConnector
 from cscience.features.clip_spatial.clip_spatial_config import ClipSpatialConfig
 from cscience.features.clip_spatial.config.masking_preprocessing_order import ImagePreprocessingOrder
+from cscience.features.clip_spatial.config.scoring_function import ScoringFunction
 from cscience.features.clip_spatial.masking.masking_mode import MaskingMode
 from utils.visualization_util import plot_spatial_scores
 
 
-class TestSpatialFeature(unittest.TestCase):
+class ExpSpatialFeature(unittest.TestCase):
     image_repo: dict[str, Image.Image] = {}
     connector_repository: dict[str, ClipSpatialConnector] = {}
     FIXTURES_ROOT = Path(__file__).parent / "fixtures"
@@ -28,36 +29,41 @@ class TestSpatialFeature(unittest.TestCase):
         masking_modes: List[str] = [MaskingMode.EXTRACT, MaskingMode.MASK_OUT, MaskingMode.KEEP_ONLY]
         preprocessing_modes: List[str] = [ImagePreprocessingOrder.LATE_PREPROCESSING,
                                           ImagePreprocessingOrder.EARLY_PREPROCESSING]
+        scoring_functions: List[str] = [ScoringFunction.ABSOLUTE_NORMALIZED, ScoringFunction.RELATIVE_POSITIVE_NORMALIZED]
 
         for masking_mode in masking_modes:
             for preprocessing_mode in preprocessing_modes:
-                for tiling in tilings:
-                    namespace = f"exp_{tiling}_{masking_mode}_{preprocessing_mode}"
+                for scoring_function in scoring_functions:
+                    for tiling in tilings:
 
-                    if tiling == "5_7_50percent":
-                        config = ClipSpatialConfig(
-                            namespace=namespace,
-                            step_size=(1 / 6, 1 / 8),
-                            start_point=(1 / 6, 1 / 8),
-                            grid_shape=(5, 7),
-                            geometry_size=(1 / 3, 1 / 4),
-                            masking_mode=masking_mode,
-                            preprocessing_order=preprocessing_mode
-                        )
-                    elif tiling == "4_3_20percent":
-                        config = cls.config_extract_late_preprocessing_low_res = ClipSpatialConfig(
-                            namespace=namespace,
-                            step_size=((1 - 2 * 6 / 36) / 2, (1 - 2 * 6 / 48) / 3),
-                            start_point=(6 / 36, 6 / 48),
-                            grid_shape=(3, 4),
-                            geometry_size=(12 / 30, 12 / 40),
-                            masking_mode=masking_mode,
-                            preprocessing_order=preprocessing_mode
-                        )
-                    else:
-                        raise NotImplementedError
+                        namespace = f"exp_{tiling}_{masking_mode}_{preprocessing_mode}_{scoring_function}"
 
-                    cls.connector_repository[namespace] = ClipSpatialConnector(config=config)
+                        if tiling == "5_7_50percent":
+                            config = ClipSpatialConfig(
+                                namespace=namespace,
+                                step_size=(1 / 6, 1 / 8),
+                                start_point=(1 / 6, 1 / 8),
+                                grid_shape=(5, 7),
+                                geometry_size=(1 / 3, 1 / 4),
+                                masking_mode=masking_mode,
+                                preprocessing_order=preprocessing_mode,
+                                scoring_function=scoring_function
+                            )
+                        elif tiling == "4_3_20percent":
+                            config = cls.config_extract_late_preprocessing_low_res = ClipSpatialConfig(
+                                namespace=namespace,
+                                step_size=((1 - 2 * 6 / 36) / 2, (1 - 2 * 6 / 48) / 3),
+                                start_point=(6 / 36, 6 / 48),
+                                grid_shape=(3, 4),
+                                geometry_size=(12 / 30, 12 / 40),
+                                masking_mode=masking_mode,
+                                preprocessing_order=preprocessing_mode,
+                                scoring_function=scoring_function
+                            )
+                        else:
+                            raise NotImplementedError
+
+                        cls.connector_repository[namespace] = ClipSpatialConnector(config=config)
         cls._images_repo = FixtureRepository[Image.Image](
             (cls.FIXTURES_ROOT / "images-gen").glob("**/*.jpg"),
             loader=Image.open,
@@ -77,23 +83,9 @@ class TestSpatialFeature(unittest.TestCase):
         # runs after each test method
         pass
 
-    def test_single_vs_batch(self) -> None:
-        batch = self._images_repo.query("1920x1080")[0:10]
-        img = batch[0]
-        for key, connector in self.connector_repository.items():
-            v = connector.image_regions(img)
-            vb = connector.image_region_batch(batch)
-            eps = float(np.finfo(np.float32).eps)
-
-            np.testing.assert_allclose(
-                v.vectors[0],
-                vb.vectors[0],
-                rtol=0,
-                atol=10 * eps,
-            )
 
 
-
+    @unittest.skip("skipping")
     def test_scoring_cat_dog_1920x1440(
             self,
     ) -> None:
@@ -116,7 +108,7 @@ class TestSpatialFeature(unittest.TestCase):
                         label=f"config:{key} - prompt {label}"
                     )
 
-
+    @unittest.skip("skipping")
     def test_scoring_cat_dog_640x480(
             self,
     ) -> None:

@@ -74,10 +74,12 @@ from .feature.service_info import ServiceInfo
 # Registry
 from .registry.conversion_registry import ConversionRegistry
 from .registry.registry_base import RegistryBase
+from .utils.fixture_repository import FixtureRepository
 
 # Utils
 from .utils.measure_time import measure_time
 
+from .utils.torch_utils import resolve_device
 
 __all__ = [
     # Config
@@ -160,4 +162,7 @@ __all__ = [
 
     # Utils
     "measure_time",
+    "resolve_device",
+    "FixtureRepository",
 ]
+

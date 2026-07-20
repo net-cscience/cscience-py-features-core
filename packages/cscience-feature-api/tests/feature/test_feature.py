@@ -13,10 +13,15 @@ class FeatureTest(unittest.TestCase):
             def _initialize(self, config: ConfigBase) -> None:
                 pass
 
+            def get_feature_info(self) -> None:
+                pass
+
         class B(FeatureBase['B',CoreConfig]):
             def _initialize(self, config: ConfigBase) -> None:
                 pass
 
+            def get_feature_info(self) -> None:
+                pass
 
         a = A.get_instance(CoreConfig(namespace="A"))
         b = B.get_instance(CoreConfig(namespace="B"))

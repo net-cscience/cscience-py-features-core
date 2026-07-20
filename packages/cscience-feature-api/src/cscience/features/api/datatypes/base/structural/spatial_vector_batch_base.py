@@ -50,6 +50,7 @@ class SpatialVectorBatchBase(
 
         normalized = SpatialVectorBatchData(
             vectors=dict(data.vectors),
+            base_vectors=dict(data.base_vectors),
             layout=data.layout,
             item_keys=tuple(data.item_keys),
             regions=tuple(data.regions),

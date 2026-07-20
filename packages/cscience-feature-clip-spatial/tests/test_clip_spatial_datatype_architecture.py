@@ -169,6 +169,10 @@ def make_spatial_tensor_data(
         ),
         item_keys=(10, 20),
         regions=make_regions(),
+        base_vectors={
+            0: torch.tensor([0.0, 0.1, 0.2]),
+            1: torch.tensor([1.0, 1.1, 1.2]),
+        }
     )
 
 import unittest
@@ -229,6 +233,7 @@ class TestClipSpatialTensorBatch(unittest.TestCase):
             layout=data.layout,
             item_keys=data.item_keys,
             regions=data.regions,
+            base_vectors=data.base_vectors,
         )
 
         with self.assertRaises(TypeError):
@@ -244,6 +249,7 @@ class TestClipSpatialTensorBatch(unittest.TestCase):
             layout=data.layout,
             item_keys=data.item_keys,
             regions=data.regions,
+            base_vectors=data.base_vectors,
         )
 
         with self.assertRaises(ValueError):
@@ -259,6 +265,7 @@ class TestClipSpatialTensorBatch(unittest.TestCase):
             layout=data.layout,
             item_keys=data.item_keys,
             regions=data.regions,
+            base_vectors=data.base_vectors,
         )
 
         with self.assertRaises(TypeError):
@@ -359,6 +366,7 @@ def make_score_data(
         layout=tensor_data.layout,
         item_keys=tensor_data.item_keys,
         regions=tensor_data.regions,
+        base_vectors=tensor_data.base_vectors,
     )
 
 

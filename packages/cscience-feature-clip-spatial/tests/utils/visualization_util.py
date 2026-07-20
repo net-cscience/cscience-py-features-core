@@ -1,138 +1,386 @@
+from __future__ import annotations
+
+from collections.abc import Mapping
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from PIL import Image
-from matplotlib import pyplot as plt
-import seaborn as sns
 import torch.nn.functional as F
-from matplotlib.axis import Axis
+from PIL import Image
 
-from cscience.features.clip_spatial.clip_spatial_feature.Masking.MaskingGenerator import MaskingGenerator
-
-font_scale = 1.0
-rc = {
-    "grid.linestyle": "solid",
-    "grid.linewidth": 0.6,
-    "grid.alpha": 0.35,
-    "axes.edgecolor": "black",
-    "axes.linewidth": 0.8,
-    "axes.spines.right": False,
-    "axes.spines.top": False,
-    "font.family": "serif",
-    "font.serif": [
-        "Computer Modern Roman",
-        "CMU Serif",
-        "Latin Modern Roman",
-        "DejaVu Serif",
-    ],
-    "mathtext.fontset": "cm",
-    "text.usetex": True,
-    "font.size": 11.0 * font_scale,
-    "axes.titlesize": 13.0 * font_scale,
-    "axes.labelsize": 12.0 * font_scale,
-    "xtick.labelsize": 11.0 * font_scale,
-    "ytick.labelsize": 11.0 * font_scale,
-    "legend.fontsize": 10.5 * font_scale,
-    "figure.titlesize": 13.0 * font_scale,
-    "axes.titlepad": 10.0,
-    "axes.labelpad": 6.0,
-    "legend.frameon": False,
-}
-sns.set_theme(style="ticks", context="paper", rc=rc)
-
-def taget_point_hard(scores: torch.Tensor,  generator: MaskingGenerator) -> tuple[int, int]:
-    _, best_idx = torch.max(scores, dim=0)
-    generator.idx = int(best_idx.item())
-    cx, cy = generator.get_xy_pixel_point()
-    return cx, cy
-
-def taget_point_soft(scores: torch.Tensor, generator: MaskingGenerator) -> tuple[int, int]:
-    xs, ys = [], []
-    w = torch.softmax(F.normalize(scores, dim=-1) / 0.05, dim=0)
-    for g in generator:
-        x, y = g.get_xy_pixel_point()
-        xs.append(x)
-        ys.append(y)
-
-    xs = torch.tensor(xs, device=w.device, dtype=torch.float32)
-    ys = torch.tensor(ys, device=w.device, dtype=torch.float32)
-
-    cx = int(float((w * xs).sum().item()))
-    cy = int(float((w * ys).sum().item()))
-    return cx, cy
+from cscience.features.clip_spatial.clip_spatial_datatypes.spatial_score_vector_batch import (
+    SpatialScoreVectorBatch,
+)
 
 
-def show_overlay_any(image_pil_or_np, scores: torch.Tensor, generator: MaskingGenerator, alpha=0.45, label=None,  title=True, idx = None):
-    if hasattr(image_pil_or_np, "convert"):
-        img = np.array(image_pil_or_np.convert("RGB")).astype(np.float32) / 255.0
+def _get_item_index(
+    scores: SpatialScoreVectorBatch,
+    item_key: int | None,
+) -> int:
+    if item_key is None:
+        if len(scores.item_keys) != 1:
+            raise ValueError(
+                "item_key is required when scores contain multiple items."
+            )
+
+        return 0
+
+    try:
+        return scores.item_keys.index(item_key)
+    except ValueError as error:
+        raise KeyError(f"Unknown item key: {item_key}.") from error
+
+
+def _get_query_index(
+    scores: SpatialScoreVectorBatch,
+    query_key: int | None,
+) -> int:
+    if query_key is None:
+        if len(scores.query_keys) != 1:
+            raise ValueError(
+                "query_key is required when scores contain multiple queries."
+            )
+
+        return 0
+
+    try:
+        return scores.query_keys.index(query_key)
+    except ValueError as error:
+        raise KeyError(f"Unknown query key: {query_key}.") from error
+
+
+def _get_region_scores(
+    scores: SpatialScoreVectorBatch,
+    *,
+    item_key: int | None,
+    query_key: int | None,
+) -> torch.Tensor:
+    item_index = _get_item_index(scores, item_key)
+    query_index = _get_query_index(scores, query_key)
+
+    return torch.tensor([
+        scores.vectors[
+            scores.layout.to_flat_index(
+                item_index=item_index,
+                region_index=region.index,
+            )
+        ][query_index]
+        for region in scores.regions
+    ], dtype=torch.float32)
+
+
+def _get_base_score(
+    scores: SpatialScoreVectorBatch,
+    *,
+    item_key: int | None,
+    query_key: int | None,
+) -> float:
+    item_index = _get_item_index(scores, item_key)
+    query_index = _get_query_index(scores, query_key)
+
+    resolved_item_key = scores.item_keys[item_index]
+
+    return float(
+        scores.data().base_vectors[resolved_item_key][query_index]
+    )
+
+
+def target_point_hard(
+    scores: SpatialScoreVectorBatch,
+    *,
+    item_key: int | None = None,
+    query_key: int | None = None,
+) -> tuple[int, int]:
+    region_scores = _get_region_scores(
+        scores,
+        item_key=item_key,
+        query_key=query_key,
+    )
+
+    best_index = int(torch.argmax(region_scores).item())
+
+    return scores.regions[best_index].center_xy
+
+
+def target_point_soft(
+    scores: SpatialScoreVectorBatch,
+    *,
+    item_key: int | None = None,
+    query_key: int | None = None,
+) -> tuple[int, int]:
+    region_scores = _get_region_scores(
+        scores,
+        item_key=item_key,
+        query_key=query_key,
+    )
+
+    weights = torch.softmax(
+        F.normalize(region_scores, dim=0) / 0.05,
+        dim=0,
+    )
+
+    xs = torch.tensor(
+        [region.center_x for region in scores.regions],
+        dtype=torch.float32,
+    )
+
+    ys = torch.tensor(
+        [region.center_y for region in scores.regions],
+        dtype=torch.float32,
+    )
+
+    return (
+        int((weights * xs).sum().item()),
+        int((weights * ys).sum().item()),
+    )
+
+
+def plot_spatial_scores(
+    image: Image.Image | np.ndarray,
+    scores: SpatialScoreVectorBatch,
+    *,
+    item_key: int | None = None,
+    query_key: int | None = None,
+    alpha: float = 0.45,
+    label: str | None = None,
+    show_region_scores: bool = True,
+    show_base_score: bool = True,
+    show: bool = True,
+    output_path: Path | None = None,
+) -> Path | None:
+    """Plot one item/query combination from a spatial score batch."""
+    image_array = _to_numpy_image(image)
+    image_height, image_width = image_array.shape[:2]
+
+    _validate_coordinate_space(
+        scores,
+        image_width=image_width,
+        image_height=image_height,
+    )
+
+    region_scores = _get_region_scores(
+        scores,
+        item_key=item_key,
+        query_key=query_key,
+    )
+
+    base_score = _get_base_score(
+        scores,
+        item_key=item_key,
+        query_key=query_key,
+    )
+
+    score_map = np.zeros(
+        (image_height, image_width),
+        dtype=np.float32,
+    )
+
+    coverage = np.zeros(
+        (image_height, image_width),
+        dtype=np.float32,
+    )
+
+    figure, axis = plt.subplots(figsize=(10, 8))
+
+    for region, score in zip(
+        scores.regions,
+        region_scores,
+        strict=True,
+    ):
+        value = float(score.item())
+
+        score_map[
+            region.y0:region.y1,
+            region.x0:region.x1,
+        ] += value
+
+        coverage[
+            region.y0:region.y1,
+            region.x0:region.x1,
+        ] += 1
+
+        if show_region_scores:
+            axis.text(
+                region.center_x,
+                region.center_y,
+                f"{value:.3f}\n{region.grid_xy}",
+                ha="center",
+                va="center",
+                color="white",
+            )
+
+    covered = coverage > 0
+    score_map[covered] /= coverage[covered]
+
+    axis.imshow(image_array)
+
+    axis.imshow(
+        np.ma.masked_where(~covered, score_map),
+        alpha=alpha,
+        cmap="magma",
+        interpolation="nearest",
+    )
+
+    hard_x, hard_y = target_point_hard(
+        scores,
+        item_key=item_key,
+        query_key=query_key,
+    )
+
+    axis.plot(
+        hard_x,
+        hard_y,
+        "X",
+        markersize=13,
+    )
+
+    soft_x, soft_y = target_point_soft(
+        scores,
+        item_key=item_key,
+        query_key=query_key,
+    )
+
+    axis.plot(
+        soft_x,
+        soft_y,
+        "D",
+        markersize=10,
+    )
+
+    axis.axis("off")
+
+    title_parts = []
+
+    if label is not None:
+        title_parts.append(label)
+
+    if show_base_score:
+        title_parts.append(f"Base image score: {base_score:.3f}")
+
+    if title_parts:
+        axis.set_title("\n".join(title_parts))
+
+    figure.tight_layout()
+
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(
+            output_path,
+            bbox_inches="tight",
+            dpi=300,
+        )
+
+    if show:
+        plt.show()
     else:
-        img = image_pil_or_np.astype(np.float32)
+        plt.close(figure)
 
-    scores_cpu = scores.detach().float().cpu()  # <-- key fix
-
-    H, W = generator.image_h, generator.image_w
-    scores_tensor = torch.zeros((1, H, W), dtype=torch.float32)
+    return output_path
 
 
+def plot_all_spatial_scores(
+    images: Mapping[int, Image.Image | np.ndarray],
+    scores: SpatialScoreVectorBatch,
+    *,
+    output_directory: Path | None = None,
+    show_region_scores: bool = True,
+    show_base_score: bool = True,
+    show: bool = True,
+) -> list[Path]:
+    """Plot every item/query combination."""
+    output_paths: list[Path] = []
 
-    fig, ax = plt.subplots()
+    for item_key in scores.item_keys:
+        image = images[item_key]
+
+        for query_key in scores.query_keys:
+            output_path = None
+
+            if output_directory is not None:
+                output_path = (
+                    output_directory
+                    / f"item-{item_key}_query-{query_key}.png"
+                )
+
+            result = plot_spatial_scores(
+                image,
+                scores,
+                item_key=item_key,
+                query_key=query_key,
+                label=f"Item {item_key} — query {query_key}",
+                show_region_scores=show_region_scores,
+                show_base_score=show_base_score,
+                show=show,
+                output_path=output_path,
+            )
+
+            if result is not None:
+                output_paths.append(result)
+
+    return output_paths
 
 
+def _to_numpy_image(
+    image: Image.Image | np.ndarray,
+) -> np.ndarray:
+    if isinstance(image, Image.Image):
+        return (
+            np.asarray(
+                image.convert("RGB"),
+                dtype=np.float32,
+            )
+            / 255.0
+        )
 
-    for g in generator:  # resets idx internally
-        val = float(scores_cpu[g.idx].item())
-        g.geometry_fnc(scores_tensor)[:, :] = val
+    array = np.asarray(image, dtype=np.float32)
 
-        px, py = g.get_xy_pixel_point()
-        ax.text(px, py, f"${val:.2f}$\n${g.get_xy_tile_coordinates()}$", ha="center", va="center", color="w")
+    if array.max() > 1.0:
+        array /= 255.0
 
-    ax.imshow(img)
-    #ax.imshow(scores_tensor[0].numpy(), alpha=alpha, cmap="magma", interpolation="nearest")
-
-    xh, yh = taget_point_hard(scores, generator)
-    pal = sns.color_palette("Spectral", n_colors=10)
-    ax.plot(xh, yh, "X", markersize=13, color=pal[9])
-    xs, ys = taget_point_soft(scores, generator)
-    ax.plot(xs, ys, "D", markersize=10, color=pal[7])
-
-    ax.axis("off")
-    if title and label is not None :
-        ax.set_title(label)
-    fig.tight_layout()
-    # As pdf
-    if idx is not None:
-        label = f"{idx}-{str.replace(label, " ", "_")}"
-    else:
-        label = label if label else "overlay"
-
-    fig.savefig(f"overlays/{label if title else f'{label}_noTitle'}.png", format="png", bbox_inches="tight", dpi=300)
-    plt.show()
+    return array
 
 
-def tensor_to_pil(x, preprocess):
-    """
-    x: torch tensor [3,H,W] or [1,3,H,W] in *preprocessed* (normalized) space.
-    preprocess: the transform returned by open_clip.create_model_and_transforms(...)
-    Returns: PIL.Image in RGB, matching the tensor's spatial view (usually 224x224).
-    """
-    if x.ndim == 4:
-        x = x[0]
-    assert x.ndim == 3 and x.shape[0] == 3
+def _validate_coordinate_space(
+    scores: SpatialScoreVectorBatch,
+    *,
+    image_width: int,
+    image_height: int,
+) -> None:
+    expected_width, expected_height = _infer_coordinate_size(scores)
 
-    # Find torchvision.transforms.Normalize inside preprocess
-    mean = std = None
-    if hasattr(preprocess, "transforms"):
-        for tr in preprocess.transforms:
-            if tr.__class__.__name__ == "Normalize":
-                mean = torch.tensor(tr.mean).view(3, 1, 1)
-                std = torch.tensor(tr.std).view(3, 1, 1)
-                break
+    if (
+        image_width != expected_width
+        or image_height != expected_height
+    ):
+        raise ValueError(
+            "Image dimensions do not match the spatial "
+            "coordinate system of the scores: "
+            f"image={image_width}x{image_height}, "
+            f"scores={expected_width}x{expected_height}."
+        )
 
-    if mean is None or std is None:
-        raise RuntimeError("Could not find Normalize(mean,std) inside preprocess.transforms")
 
-    x = x.detach().cpu()
-    x = x * std + mean  # unnormalize
-    x = x.clamp(0.0, 1.0)  # valid image range
-    x = (x.permute(1, 2, 0).numpy() * 255).astype(np.uint8)  # HWC uint8
-    return Image.fromarray(x, mode="RGB")
+def _infer_coordinate_size(
+    scores: SpatialScoreVectorBatch,
+) -> tuple[int, int]:
+    width_candidates: list[float] = []
+    height_candidates: list[float] = []
 
+    for region in scores.regions:
+        if region.nx0 > 0:
+            width_candidates.append(region.x0 / region.nx0)
+
+        if region.nx1 > 0:
+            width_candidates.append(region.x1 / region.nx1)
+
+        if region.ny0 > 0:
+            height_candidates.append(region.y0 / region.ny0)
+
+        if region.ny1 > 0:
+            height_candidates.append(region.y1 / region.ny1)
+
+    return (
+        round(float(np.median(width_candidates))),
+        round(float(np.median(height_candidates))),
+    )

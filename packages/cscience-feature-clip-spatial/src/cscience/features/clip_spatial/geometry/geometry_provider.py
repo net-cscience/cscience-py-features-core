@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 
+import numpy as np
 import torch
 
 from cscience.features.api import SpatialRegion
 
 
 class GeometryProvider(ABC):
-    """Maps spatial regions to tensor windows."""
 
     @abstractmethod
     def create_region(
@@ -20,7 +20,17 @@ class GeometryProvider(ABC):
         image_width: int,
         image_height: int,
     ) -> SpatialRegion:
-        """Create region metadata for one grid position."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def create_mask(
+        self,
+        *,
+        region: SpatialRegion,
+        image_width: int,
+        image_height: int,
+    ) -> np.ndarray:
+        """Return a boolean mask for one region."""
         raise NotImplementedError
 
     def select(
@@ -28,9 +38,8 @@ class GeometryProvider(ABC):
         tensor: torch.Tensor,
         region: SpatialRegion,
     ) -> torch.Tensor:
-        """Return the tensor view covered by the region.
-
-        Expects:
-            tensor shape [C, H, W]
-        """
-        return tensor[:, region.y0:region.y1, region.x0:region.x1]
+        return tensor[
+            :,
+            region.y0:region.y1,
+            region.x0:region.x1,
+        ]

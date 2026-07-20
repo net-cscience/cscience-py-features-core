@@ -1,19 +1,11 @@
-import base64
-import os
 import unittest
-from io import BytesIO
 from pathlib import Path
 
+# Load model directly
 from PIL import Image
 
 from cscience.features.api.utils.image_utils import load_base64_image
 from cscience.features.nsfw_image import NsfwImageConnector
-
-# Load model directly
-import torch
-from PIL import Image
-from transformers import AutoModelForImageClassification, ViTImageProcessor
-
 from cscience.features.nsfw_image.nsfw_config import NsfwConfig
 
 TEST_FIXTURE_DIR: Path =  Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "images-gen"

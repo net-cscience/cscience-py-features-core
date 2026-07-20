@@ -21,11 +21,13 @@ class FunctionConnector(Generic[Tin, Tfi, Tfo, Tout]):
     The connector resolves one converter from public input type to feature input
     type and one converter from feature output type to public output type.
     """
-    def __init__(self, feature: FeatureBase, function: Callable[[Tfi], Tfo],
-                 input_type: type[DatatypeBase],
-                 input_feature_type: type[DatatypeBase],
-                 output_feature_type: type[DatatypeBase],
-                 output_type: type[DatatypeBase],
+    def __init__(self,
+                 feature: FeatureBase,
+                 function: Callable[[Tfi], Tfo],
+                 input_type: type[Tin],
+                 input_feature_type: type[Tfi],
+                 output_feature_type: type[Tfo],
+                 output_type: type[Tout],
                  ) -> None:
         strategy_in: SearchStrategyBase = SearchStrategyMostSpecific(ConversionKey(type(feature), input_type, input_feature_type))
         strategy_out: SearchStrategyBase = SearchStrategyMostSpecific(ConversionKey(type(feature), output_feature_type, output_type))

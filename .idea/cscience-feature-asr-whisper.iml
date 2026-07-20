@@ -6,8 +6,8 @@
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-asr-whisper/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-asr-whisper/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="cscience-feature-api" exported="" />
+    <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
   </component>
 </module>

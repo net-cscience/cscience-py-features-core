@@ -19,7 +19,7 @@ REQUIRED_HEADINGS = (
 class TestPackageReadmes(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.repository_root = Path(__file__).resolve().parents[1]
+        cls.repository_root = Path(__file__).resolve().parents[3]
         cls.packages_root = cls.repository_root / "packages"
 
     def test_root_readme_exists(self) -> None:

@@ -1,10 +1,14 @@
 from enum import StrEnum
 
 
-class ImagePreprocessingOrder(StrEnum):
+class ScoringFunction(StrEnum):
     """
-    EARLY_PREPROCESSING: Preprocessing is applied before masking and before embedding
-    LATE_PREPROCESSING: Preprocessing is applied after masking on each masked image, and before embedding.
+    ABSOLUTE: The regional score is the absolute value of the COSINE CLIP similarity between the masked image and the text.
+    ABSOLUTE_NORMALIZED: The regional score is the absolute value of the COSINE CLIP similarity between the masked image and the text, normalized to [0, 1]
     """
-    EARLY_PREPROCESSING = "early_preprocessing"
-    LATE_PREPROCESSING = "late_preprocessing"
+    ABSOLUTE = "absolute"
+    ABSOLUTE_NORMALIZED = "absolute_normalized"
+    RELATIVE_POSITIVE = "relative_positive"
+    RELATIVE_POSITIVE_NORMALIZED = "relative_positive_normalized"
+    RELATIVE_NEGATIVE = "relative_negative"
+    RELATIVE_NEGATIVE_NORMALIZED = "relative_negative_normalized"

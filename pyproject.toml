@@ -10,10 +10,9 @@ dependencies = [
     "cscience-feature-asr-whisper",
     "cscience-feature-nsfw-image",
     "cscience-feature-ocr-tesseract",
-
-    "numpy>=2.4.6",
-    "torch>=2.11.0",
-    "icontract>=2.7.3",
+    "numpy>=2.4.6,<2.5",
+    "torch>=2.13.0,<3",
+    "icontract>=2.7.3,<3",
 ]
 
 [tool.uv]
@@ -21,34 +20,43 @@ package = false
 
 [tool.uv.sources]
 cscience-feature-api = { workspace = true }
+cscience-feature-api-maintenance = { workspace = true }
 cscience-feature-asr-whisper = { workspace = true }
 cscience-feature-clip = { workspace = true }
 cscience-feature-clip-spatial = { workspace = true }
 cscience-feature-nsfw-image = { workspace = true }
 cscience-feature-ocr-tesseract = { workspace = true }
 
-project-maintenance = { workspace = true }
+torch = [
+    { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 
 [tool.uv.workspace]
 members = [
 
     "packages/cscience-feature-api",
+    "packages/cscience-feature-api-maintenance",
     "packages/cscience-feature-asr-whisper",
     "packages/cscience-feature-clip",
     "packages/cscience-feature-clip-spatial",
     "packages/cscience-feature-nsfw-image",
     "packages/cscience-feature-ocr-tesseract",
 
-    "project-maintenance",
 ]
 
 [dependency-groups]
 dev = [
-    "project-maintenance",
+    "cscience-feature-api-maintenance",
 
-    "pytest>=8.0",
-    "pytest-cov>=6.0",
-    "ruff>=0.8",
-    "mypy>=1.13",
+    "pytest>=9.1.1,<10",
+    "pytest-cov>=7.1.0,<8",
+    "ruff>=0.15.22,<0.16",
+    "mypy>=2.3.0,<3",
 ]

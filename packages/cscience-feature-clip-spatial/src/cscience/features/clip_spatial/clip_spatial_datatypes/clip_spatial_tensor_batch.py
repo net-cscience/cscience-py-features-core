@@ -1,3 +1,5 @@
+from itertools import chain
+
 import torch
 from torch import Tensor
 
@@ -13,18 +15,9 @@ from .clip_spatial_datatype import ClipSpatialDatatype
 class ClipSpatialTensorBatch(
     SpatialVectorBatchBase[Tensor],
     EmbeddingBase,
-    ClipSpatialDatatype[
-        SpatialVectorBatchData[Tensor]
-    ],
+    ClipSpatialDatatype[SpatialVectorBatchData[Tensor]],
 ):
-    """Spatially structured CLIP embedding tensor batch.
-
-    Physical structure:
-        dict[flat_region_index, Tensor[D]]
-
-    Logical structure:
-        [item_count, regions_per_item, embedding_dim]
-    """
+    """Spatial CLIP embeddings with one base embedding per item."""
 
     def __init__(
         self,
@@ -32,12 +25,16 @@ class ClipSpatialTensorBatch(
     ) -> None:
         if not isinstance(data, SpatialVectorBatchData):
             raise TypeError(
-                "ClipSpatialTensorBatch expects "
-                f"SpatialVectorBatchData, "
+                "ClipSpatialTensorBatch expects SpatialVectorBatchData, "
                 f"got {type(data).__name__}."
             )
 
-        for key, vector in data.vectors.items():
+        vectors = chain(
+            data.vectors.items(),
+            data.base_vectors.items(),
+        )
+
+        for key, vector in vectors:
             if not isinstance(vector, Tensor):
                 raise TypeError(
                     "ClipSpatialTensorBatch expects Tensor values, "
@@ -59,11 +56,11 @@ class ClipSpatialTensorBatch(
         super().__init__(data)
 
     def as_flat_tensor(self) -> Tensor:
-        """Return embeddings with shape [N * R, D]."""
+        """Return spatial embeddings with shape [N * R, D]."""
         return torch.stack(self.ordered_values())
 
     def as_structured_tensor(self) -> Tensor:
-        """Return embeddings with shape [N, R, D]."""
+        """Return spatial embeddings with shape [N, R, D]."""
         flat = self.as_flat_tensor()
 
         return flat.reshape(
@@ -71,3 +68,10 @@ class ClipSpatialTensorBatch(
             self.layout.regions_per_item,
             flat.shape[-1],
         )
+
+    def as_base_tensor(self) -> Tensor:
+        """Return base-image embeddings with shape [N, D]."""
+        return torch.stack([
+            self.data().base_vectors[item_key]
+            for item_key in self.item_keys
+        ])

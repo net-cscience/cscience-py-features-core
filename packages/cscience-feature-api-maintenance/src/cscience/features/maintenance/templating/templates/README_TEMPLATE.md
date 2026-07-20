@@ -1,4 +1,3 @@
-# `<package-name>`
 
 One-sentence description of the package.
 

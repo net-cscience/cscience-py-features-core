@@ -30,11 +30,18 @@ class Fixture:
     contains: list[str]
 
 
-
+FICTURE_DIR = Path(__file__).parent / "fixtures"
 class AsrWhispernTest(unittest.TestCase):
 
+
+    @classmethod
+    def setUpClass(cls):
+        AsrConfig.set_default_config_directory(FICTURE_DIR / "config")
+
     def setUp(self):
-        fixture_dir = Path(__file__).parent / "fixtures" / "ljspeech"
+
+        AsrConfig.set_default_config_directory(FICTURE_DIR / "config")
+        fixture_dir = FICTURE_DIR / "ljspeech"
 
         self.fixtures :list[Fixture] = [
             Fixture( "LJ001-0001.wav", (fixture_dir / "LJ001-0001.wav").read_bytes(), ["printing", "arts"]),
@@ -44,6 +51,7 @@ class AsrWhispernTest(unittest.TestCase):
 
 
     def test_connector_initializes(self):
+
         connector = AsrWhisperConnector(AsrConfig())
         self.assertIsNotNone(connector)
 

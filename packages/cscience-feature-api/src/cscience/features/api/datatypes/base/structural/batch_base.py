@@ -2,6 +2,8 @@ from abc import ABC
 from collections.abc import Mapping
 from typing import Generic, TypeVar, cast
 
+import icontract
+
 T = TypeVar("T")
 
 
@@ -18,6 +20,7 @@ class BatchBase(ABC, Generic[T]):
     def _batch_mapping(self) -> Mapping[int, T]:
         """Return the indexed elements represented by this batch."""
         return cast(Mapping[int, T], self.data())  # type: ignore[attr-defined]
+
 
     def _validate_batch_mapping(self, data: Mapping[int, T]) -> None:
         if not data:

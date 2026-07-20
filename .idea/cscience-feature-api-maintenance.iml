@@ -3,8 +3,9 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance">
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/tests" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/export" />
-      <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/src/exporting/export" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/src/cscience/features/maintenance/exporting/export" />
     </content>
     <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
