@@ -127,6 +127,11 @@ class SpatialVectorBatchBase(
         return dict(self.data().vectors)
 
     @property
+    def base_vectors(self) -> dict[int, V]:
+        """Return base vectors indexed by flat spatial index."""
+        return dict(self.data().base_vectors)
+
+    @property
     def layout(self) -> SpatialBatchLayout:
         """Return the spatial batch layout."""
         return self.data().layout
