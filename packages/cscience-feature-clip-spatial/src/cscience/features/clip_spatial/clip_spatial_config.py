@@ -37,17 +37,17 @@ class ClipSpatialConfig(ConfigBase):
     )
 
     preprocessing_order: ImagePreprocessingOrder = Field(
-        default=ImagePreprocessingOrder.EARLY_PREPROCESSING
+        default=ImagePreprocessingOrder.LATE_PREPROCESSING
     )
 
     scoring_function: ScoringFunction = Field(
-        default=ScoringFunction.ABSOLUTE
+        default=ScoringFunction.RELATIVE_POSITIVE
     )
 
-    step_size: tuple[float, float] = Field(default=(1 / 6, 1 / 8))
-    start_point: tuple[float, float] = Field(default=(1 / 6, 1 / 8))
-    grid_shape: tuple[int, int] = Field(default=(5, 7))
+    step_size: tuple[float, float] = Field(default=((1 - 2 * 6 / 36) / 2, (1 - 2 * 6 / 48) / 3))
+    start_point: tuple[float, float] = Field(default=(6 / 36, 6 / 48))
+    grid_shape: tuple[int, int] = Field(default=(3, 4))
 
-    geometry_size: tuple[float, float] = Field(default=(1 / 3, 1 / 4))
+    geometry_size: tuple[float, float] = Field(default=(12 / 30, 12 / 40))
 
-    masking_mode: MaskingMode = Field(default=MaskingMode.KEEP_ONLY)
+    masking_mode: MaskingMode = Field(default=MaskingMode.EXTRACT)

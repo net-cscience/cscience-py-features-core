@@ -20,6 +20,8 @@ from .clip_feature import ClipFeature
 class ClipConnector(ConnectorBase):
     """Public connector for CLIP text and image embeddings."""
 
+
+
     def __init__(self,  config: ClipConfig) -> None:
         self.feature = ClipFeature.get_instance(config, init_if_missing=True)
         super().__init__(ClipConversionProvider(self.feature))
