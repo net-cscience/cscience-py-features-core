@@ -4,10 +4,11 @@
     <content url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance">
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/src/cscience/features/maintenance" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/export" />
       <excludeFolder url="file://$MODULE_DIR$/packages/cscience-feature-api-maintenance/src/cscience/features/maintenance/exporting/export" />
     </content>
-    <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="D:\myRepo\net.cscience\cscience-py-features-core\.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

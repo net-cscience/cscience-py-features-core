@@ -7,8 +7,10 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-asr-whisper.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-asr-whisper.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-clip.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-clip.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-clip-spatial.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-clip-spatial.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-llm-gemma.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-llm-gemma.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-nsfw-image.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-nsfw-image.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-ocr-tesseract.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-ocr-tesseract.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/cscience-feature-text2sgd.iml" filepath="$PROJECT_DIR$/.idea/cscience-feature-text2sgd.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/cscience-py-features-core.iml" filepath="$PROJECT_DIR$/.idea/cscience-py-features-core.iml" />
     </modules>
   </component>

@@ -10,6 +10,7 @@ dependencies = [
     "cscience-feature-asr-whisper",
     "cscience-feature-nsfw-image",
     "cscience-feature-ocr-tesseract",
+    "cscience-feature-text2sgd",
     "numpy>=2.4.6,<2.5",
     "torch>=2.13.0,<3",
     "icontract>=2.7.3,<3",
@@ -26,6 +27,7 @@ cscience-feature-clip = { workspace = true }
 cscience-feature-clip-spatial = { workspace = true }
 cscience-feature-nsfw-image = { workspace = true }
 cscience-feature-ocr-tesseract = { workspace = true }
+cscience-feature-text2sgd = { workspace = true }
 
 torch = [
     { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
@@ -48,6 +50,7 @@ members = [
     "packages/cscience-feature-clip-spatial",
     "packages/cscience-feature-nsfw-image",
     "packages/cscience-feature-ocr-tesseract",
+    "packages/cscience-feature-text2sgd",
 
 ]
 

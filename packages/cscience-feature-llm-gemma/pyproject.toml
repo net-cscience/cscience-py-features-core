@@ -1,0 +1,20 @@
+[project]
+name = "cscience-feature-llm-gemma"
+version = "0.1.0"
+description = "Google Gemma LLM feature for CScience."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "cscience-feature-api",
+    "google-genai",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src/cscience"]
+sources = ["src"]
+
+[project.entry-points."cscience.features"]
+llm_gemma = "cscience.features.llm_gemma.llm_gemma_feature:LlmGemmaFeature"

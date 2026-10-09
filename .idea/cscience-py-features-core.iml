@@ -11,7 +11,9 @@
     <orderEntry type="module" module-name="cscience-feature-asr-whisper" exported="" />
     <orderEntry type="module" module-name="cscience-feature-api" exported="" />
     <orderEntry type="module" module-name="cscience-feature-clip-spatial" exported="" />
+    <orderEntry type="module" module-name="cscience-feature-text2sgd" exported="" />
     <orderEntry type="module" module-name="cscience-feature-nsfw-image" exported="" />
-    <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
+    <orderEntry type="module" module-name="cscience-feature-api-maintenance" exported="" />
+    <orderEntry type="jdk" jdkName="D:\myRepo\net.cscience\cscience-py-features-core\.venv" jdkType="Python SDK" />
   </component>
 </module>

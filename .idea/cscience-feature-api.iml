@@ -6,7 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/packages/cscience-feature-api/tests" isTestSource="true" />
     </content>
-    <orderEntry type="jdk" jdkName="uv (cscience-py-features-core)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="D:\myRepo\net.cscience\cscience-py-features-core\.venv" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
